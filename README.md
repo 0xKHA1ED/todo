@@ -49,8 +49,8 @@ A personal productivity app that combines a hierarchical mindmap with rich per-n
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/<your-org>/mindmap-tasks.git
-cd mindmap-tasks
+git clone https://github.com/<your-org>/todo.git
+cd todo
 npm install
 ```
 
@@ -108,7 +108,7 @@ This migration:
 
 1. In your Supabase dashboard go to **Authentication → Providers**.
 2. Ensure the **Email** provider is enabled.
-3. Under **Authentication → URL Configuration**, add your site URL (e.g. `https://<your-org>.github.io/mindmap-tasks`) to **Site URL** and the same URL to **Redirect URLs**.
+3. Under **Authentication → URL Configuration**, add your site URL (e.g. `https://<your-org>.github.io/todo`) to **Site URL** and the same URL to **Redirect URLs**.
 
 ### 4. (Optional) Seed a test user
 
@@ -159,10 +159,10 @@ The workflow defined in [`.github/workflows/deploy.yml`](.github/workflows/deplo
 The deployed app will be available at:
 
 ```
-https://<your-org>.github.io/mindmap-tasks/
+https://<your-org>.github.io/todo/
 ```
 
-> **Base path:** The `NEXT_PUBLIC_BASE_PATH` env var is set to `/mindmap-tasks` during the production build. If your repository is named differently, update this value in the workflow file and in your `.env.local` accordingly.
+> **Base path:** The `NEXT_PUBLIC_BASE_PATH` env var is set to `/todo` during the production build. If your repository is named differently, update this value in the workflow file and in your `.env.local` accordingly.
 
 ---
 
@@ -172,7 +172,7 @@ https://<your-org>.github.io/mindmap-tasks/
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Full URL of your Supabase project |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon/public API key |
-| `NEXT_PUBLIC_BASE_PATH` | No | Base path for static export (e.g. `/mindmap-tasks`). Leave empty for local dev. |
+| `NEXT_PUBLIC_BASE_PATH` | No | Base path for static export (e.g. `/todo`). Leave empty for local dev. |
 
 ---
 

@@ -14,6 +14,10 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'npm run dev -- --hostname 127.0.0.1 --port 3210',
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_BASE_PATH: '',
+    },
     url: 'http://127.0.0.1:3210',
     reuseExistingServer: false,
     timeout: 120_000,

@@ -1,0 +1,1 @@
+-- The app auto-creates a root "Main" node for each authenticated user on first login.

@@ -1,0 +1,101 @@
+@import '@xyflow/react/dist/style.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 6%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 6%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 263 70% 68%;
+    --primary-foreground: 240 10% 3.9%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 240 4% 18%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 63% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 18%;
+    --input: 240 4% 18%;
+    --ring: 263 70% 68%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body {
+    @apply min-h-screen bg-background text-foreground antialiased;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at top left, rgba(124, 58, 237, 0.22), transparent 36rem),
+      radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.16), transparent 32rem),
+      hsl(var(--background));
+  }
+}
+
+@layer components {
+  .tiptap-wrapper .tiptap {
+    @apply min-h-[22rem] rounded-lg border border-border bg-background/60 px-4 py-3 outline-none;
+  }
+
+  .tiptap-wrapper .tiptap p {
+    @apply my-2;
+  }
+
+  .tiptap-wrapper .tiptap ul {
+    @apply my-3 list-disc pl-6;
+  }
+
+  .tiptap-wrapper .tiptap ol {
+    @apply my-3 list-decimal pl-6;
+  }
+
+  .tiptap-wrapper .tiptap h1 {
+    @apply mb-3 mt-5 text-2xl font-bold;
+  }
+
+  .tiptap-wrapper .tiptap h2 {
+    @apply mb-3 mt-5 text-xl font-semibold;
+  }
+
+  .tiptap-wrapper .tiptap h3 {
+    @apply mb-2 mt-4 text-lg font-semibold;
+  }
+
+  .tiptap-wrapper .tiptap blockquote {
+    @apply my-3 border-l-2 border-primary pl-4 text-muted-foreground;
+  }
+
+  .tiptap-wrapper .tiptap pre {
+    @apply my-3 overflow-x-auto rounded-md bg-zinc-950 p-3 text-sm;
+  }
+
+  .tiptap-wrapper .tiptap code {
+    @apply rounded bg-zinc-900 px-1 py-0.5 text-sm;
+  }
+
+  .tiptap-wrapper .tiptap table {
+    @apply my-3 w-full border-collapse overflow-hidden rounded-md;
+  }
+
+  .tiptap-wrapper .tiptap td,
+  .tiptap-wrapper .tiptap th {
+    @apply border border-border px-3 py-2;
+  }
+
+  .react-flow__node.selected .mindmap-node {
+    @apply ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+}

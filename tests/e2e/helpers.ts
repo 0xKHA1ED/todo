@@ -94,7 +94,14 @@ export async function selectFirstNode(page: Page) {
   return node
 }
 
+export async function fitCanvas(page: Page) {
+  const fitButton = page.getByRole('button', { name: 'Fit', exact: true })
+  await expect(fitButton).toBeVisible()
+  await fitButton.click()
+}
+
 export async function selectNodeByTitle(page: Page, title: string) {
+  await fitCanvas(page)
   const node = page.locator('.react-flow__node', { hasText: title }).first()
   await expect(node).toBeVisible()
   await node.click()
@@ -102,8 +109,9 @@ export async function selectNodeByTitle(page: Page, title: string) {
 }
 
 export async function closePanel(page: Page) {
+  const dialog = page.getByRole('dialog')
   const closeButton = page.getByRole('button', { name: 'Close' })
   await expect(closeButton).toBeVisible()
   await closeButton.click()
-  await expect(closeButton).toBeHidden()
+  await expect(dialog).toBeHidden()
 }

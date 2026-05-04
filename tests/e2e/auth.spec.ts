@@ -18,5 +18,5 @@ test('login with invalid credentials shows an error', async ({ page }) => {
   await page.getByLabel('Email').fill('invalid@example.com')
   await page.locator('input[type="password"]').fill('invalid-password')
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign in failed')).toBeVisible()
+  await expect(page.getByText('Sign in failed', { exact: true })).toBeVisible()
 })

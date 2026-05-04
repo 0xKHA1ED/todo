@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js'
 import { expect, type Page, test } from '@playwright/test'
 
 export const hasE2ECredentials = Boolean(process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD)
@@ -12,8 +13,73 @@ export function requireE2ECredentials() {
   test.skip(!hasE2ECredentials, 'Set E2E_USER_EMAIL and E2E_USER_PASSWORD to run Supabase-backed E2E tests.')
 }
 
+const ROOT_DESCRIPTION = JSON.stringify({
+  type: 'doc',
+  content: [{ type: 'paragraph' }],
+})
+
+async function createAuthenticatedE2EClient() {
+  requireE2ECredentials()
+
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  })
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: process.env.E2E_USER_EMAIL!,
+    password: process.env.E2E_USER_PASSWORD!,
+  })
+
+  if (error) throw error
+
+  const userId = data.user?.id ?? data.session?.user.id
+  if (!userId) {
+    throw new Error('Failed to resolve the authenticated E2E user.')
+  }
+
+  return { supabase, userId }
+}
+
+async function resetE2EState() {
+  const { supabase, userId } = await createAuthenticatedE2EClient()
+
+  const { error: deleteError } = await supabase.from('nodes').delete().eq('user_id', userId)
+  if (deleteError) throw deleteError
+
+  const { error: insertError } = await supabase.from('nodes').insert({
+    user_id: userId,
+    parent_id: null,
+    title: 'Main',
+    urgency: 'normal',
+    tags: [],
+    description: ROOT_DESCRIPTION,
+    sort_order: 0,
+  })
+  if (insertError) throw insertError
+
+  await supabase.auth.signOut()
+}
+
+export async function updateRootNode(patch: {
+  title?: string
+  urgency?: 'low' | 'normal' | 'high'
+  tags?: string[]
+}) {
+  const { supabase, userId } = await createAuthenticatedE2EClient()
+
+  const { error } = await supabase.from('nodes').update(patch).eq('user_id', userId).is('parent_id', null)
+  if (error) throw error
+
+  await supabase.auth.signOut()
+}
+
 export async function signIn(page: Page) {
   requireE2ECredentials()
+  await resetE2EState()
   await page.goto('/login/')
   await page.getByLabel('Email').fill(process.env.E2E_USER_EMAIL!)
   await page.locator('input[type="password"]').fill(process.env.E2E_USER_PASSWORD!)
@@ -26,4 +92,11 @@ export async function selectFirstNode(page: Page) {
   await expect(node).toBeVisible()
   await node.click()
   return node
+}
+
+export async function closePanel(page: Page) {
+  const closeButton = page.getByRole('button', { name: 'Close' })
+  await expect(closeButton).toBeVisible()
+  await closeButton.click()
+  await expect(closeButton).toBeHidden()
 }

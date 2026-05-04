@@ -18,7 +18,11 @@ export function SlideOutPanel() {
 
   return (
     <Sheet open={isPanelOpen} onOpenChange={(open) => !open && closePanel()}>
-      <SheetContent side="right" className="w-[92vw] overflow-y-auto sm:max-w-none md:w-[600px]">
+      <SheetContent
+        side="right"
+        className="w-[92vw] overflow-y-auto sm:max-w-none md:w-[600px]"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
         <SheetHeader>
           <SheetTitle>{node?.title ?? 'Node details'}</SheetTitle>
         </SheetHeader>

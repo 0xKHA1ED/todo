@@ -22,6 +22,7 @@ function parseContent(content: string) {
 export function MarkdownEditor({ nodeId, initialContent }: MarkdownEditorProps) {
   const updateNode = useNodeStore((state) => state.updateNode)
   const debounceRef = useRef<number | null>(null)
+  const pendingContentRef = useRef<string | null>(null)
   const parsedContent = useMemo(() => parseContent(initialContent), [initialContent])
 
   const editor = useEditor({
@@ -34,9 +35,13 @@ export function MarkdownEditor({ nodeId, initialContent }: MarkdownEditorProps) 
       },
     },
     onUpdate({ editor: activeEditor }) {
+      pendingContentRef.current = JSON.stringify(activeEditor.getJSON())
       if (debounceRef.current) window.clearTimeout(debounceRef.current)
       debounceRef.current = window.setTimeout(() => {
-        updateNode(nodeId, { description: JSON.stringify(activeEditor.getJSON()) }).catch(() => undefined)
+        const content = pendingContentRef.current
+        pendingContentRef.current = null
+        if (!content) return
+        updateNode(nodeId, { description: content }).catch(() => undefined)
       }, 800)
     },
   })
@@ -48,9 +53,18 @@ export function MarkdownEditor({ nodeId, initialContent }: MarkdownEditorProps) 
 
   useEffect(
     () => () => {
-      if (debounceRef.current) window.clearTimeout(debounceRef.current)
+      if (debounceRef.current) {
+        window.clearTimeout(debounceRef.current)
+        debounceRef.current = null
+      }
+
+      const content = pendingContentRef.current
+      pendingContentRef.current = null
+      if (content) {
+        updateNode(nodeId, { description: content }).catch(() => undefined)
+      }
     },
-    [],
+    [nodeId, updateNode],
   )
 
   return (

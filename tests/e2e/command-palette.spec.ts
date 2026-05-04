@@ -11,6 +11,7 @@ test('ctrl+k searches nodes and opens the selected result', async ({ page }) => 
   await page.getByLabel('Title').blur()
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K')
   await page.getByPlaceholder('Search titles and descriptions...').fill(title)
-  await page.getByRole('option', { name: new RegExp(title) }).click()
+  await expect(page.getByRole('option', { name: new RegExp(title) })).toBeVisible()
+  await page.keyboard.press('Enter')
   await expect(page.getByLabel('Title')).toHaveValue(title)
 })

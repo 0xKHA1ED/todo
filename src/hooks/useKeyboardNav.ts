@@ -36,15 +36,15 @@ export function useKeyboardNav() {
         return
       }
 
-      if (shouldIgnoreShortcut(event)) return
-
-      const selected = nodes.find((node) => node.id === selectedNodeId)
-
       if (event.key === 'Escape') {
         closePanel()
         useUIStore.getState().selectNode(null)
         return
       }
+
+      if (shouldIgnoreShortcut(event)) return
+
+      const selected = nodes.find((node) => node.id === selectedNodeId)
 
       if (!selected) return
 

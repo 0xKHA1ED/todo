@@ -1,19 +1,19 @@
 import { expect, test } from '@playwright/test'
-import { requireE2ECredentials, signIn } from './helpers'
+import { closePanel, requireE2ECredentials, signIn } from './helpers'
 
 test.beforeEach(requireE2ECredentials)
 
 test('dragging a non-root node over another node keeps the canvas stable', async ({ page }) => {
   await signIn(page)
-  await page.locator('.react-flow__node').first().click()
-  await page.keyboard.press('Tab')
-  await page.keyboard.press('Escape')
-  await page.locator('.react-flow__node').first().click()
-  await page.keyboard.press('Tab')
-  await page.keyboard.press('Escape')
-
   const nodes = page.locator('.react-flow__node')
+  await page.getByRole('button', { name: 'Add' }).click()
+  await expect(nodes).toHaveCount(2, { timeout: 15_000 })
+  await closePanel(page)
+
+  await page.getByRole('button', { name: 'Add' }).click()
   await expect(nodes).toHaveCount(3, { timeout: 15_000 })
+  await closePanel(page)
+
   const source = nodes.nth(1)
   const target = nodes.nth(2)
   const sourceBox = await source.boundingBox()

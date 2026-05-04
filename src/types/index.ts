@@ -7,6 +7,7 @@ export interface NodeRecord {
   user_id: string
   parent_id: string | null
   title: string
+  completed: boolean
   urgency: Urgency
   date: string | null
   tags: string[]
@@ -29,10 +30,16 @@ export interface CreateNodePayload {
 }
 
 export type UpdateNodePayload = Partial<
-  Pick<NodeRecord, 'parent_id' | 'title' | 'urgency' | 'date' | 'tags' | 'description' | 'position_x' | 'position_y' | 'sort_order'>
+  Pick<NodeRecord, 'parent_id' | 'title' | 'completed' | 'urgency' | 'date' | 'tags' | 'description' | 'position_x' | 'position_y' | 'sort_order'>
 >
 
-export type NodeData = NodeRecord & Record<string, unknown>
+export interface NodeProgressSummary {
+  totalSubtaskCount: number
+  completedSubtaskCount: number
+  completionPercent: number
+}
+
+export type NodeData = NodeRecord & NodeProgressSummary & Record<string, unknown>
 export type FlowNode = Node<NodeData, 'customNode'>
 export type FlowEdge = Edge<Record<string, never>, 'customEdge'>
 

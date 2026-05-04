@@ -2,7 +2,7 @@ import { memo } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { Badge } from '@/components/ui/badge'
 import { useUIStore } from '@/lib/store/useUIStore'
-import { formatDate } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import type { FlowNode } from '@/types'
 
 const URGENCY_BORDER = {
@@ -23,8 +23,28 @@ export const CustomNode = memo(({ id, data }: NodeProps<FlowNode>) => {
       <Handle type="target" position={Position.Left} className="opacity-0" />
       <Handle type="source" position={Position.Right} className="opacity-0" />
 
-      <p className="truncate text-sm font-semibold leading-tight text-card-foreground">{data.title}</p>
-      <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">{data.urgency} urgency</p>
+      <div className="flex items-start justify-between gap-3">
+        <p
+          className={cn(
+            'truncate text-sm font-semibold leading-tight text-card-foreground',
+            data.completed && 'text-muted-foreground line-through',
+          )}
+        >
+          {data.title}
+        </p>
+        <Badge variant="outline" className="shrink-0 border-border/80 py-0 text-[10px] font-semibold">
+          {data.completionPercent}%
+        </Badge>
+      </div>
+
+      <div className="mt-1 flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+        <span>{data.urgency} urgency</span>
+        {data.completed && (
+          <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-emerald-700">
+            Completed
+          </span>
+        )}
+      </div>
 
       <div className="mt-2 flex min-h-5 flex-wrap gap-1">
         {data.date && (

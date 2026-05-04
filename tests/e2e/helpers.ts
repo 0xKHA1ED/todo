@@ -94,6 +94,13 @@ export async function selectFirstNode(page: Page) {
   return node
 }
 
+export async function selectNodeByTitle(page: Page, title: string) {
+  const node = page.locator('.react-flow__node', { hasText: title }).first()
+  await expect(node).toBeVisible()
+  await node.click()
+  return node
+}
+
 export async function closePanel(page: Page) {
   const closeButton = page.getByRole('button', { name: 'Close' })
   await expect(closeButton).toBeVisible()

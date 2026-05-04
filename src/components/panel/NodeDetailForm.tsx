@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { CheckCircle2, RotateCcw, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -144,6 +144,35 @@ export function NodeDetailForm({ node }: NodeDetailFormProps) {
               {urgency}
             </Button>
           ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Status</Label>
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge
+            variant={node.completed ? 'default' : 'outline'}
+            className={cn(node.completed && 'border-emerald-500/20 bg-emerald-500/15 text-emerald-700')}
+          >
+            {node.completed ? 'Completed' : 'Open'}
+          </Badge>
+          <Button
+            type="button"
+            variant={node.completed ? 'outline' : 'default'}
+            onClick={() => patchNode({ completed: !node.completed })}
+          >
+            {node.completed ? (
+              <>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Mark Uncompleted
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Mark Completed
+              </>
+            )}
+          </Button>
         </div>
       </div>
 

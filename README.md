@@ -97,7 +97,7 @@ The app is available at `http://localhost:3000`.
 
 Open the **SQL Editor** in your Supabase dashboard and run the contents of [`supabase/migrations/001_initial_schema.sql`](supabase/migrations/001_initial_schema.sql).
 
-This migration:
+This migration: 
 
 - Creates the `nodes` table with all required columns (`id`, `user_id`, `parent_id`, `title`, `urgency`, `date`, `tags`, `description`, `position_x`, `position_y`, `sort_order`, `created_at`, `updated_at`).
 - Adds a GIN index on `tags` for fast filtering.

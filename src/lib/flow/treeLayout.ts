@@ -1,10 +1,11 @@
 import dagre from 'dagre'
+import { MarkerType } from '@xyflow/react'
 import type { FlowEdge, FlowNode, NodeData, NodeRecord, NodeProgressSummary } from '@/types'
 
-const NODE_WIDTH = 220
-const NODE_HEIGHT = 108
-const RANK_SEP = 120
-const NODE_SEP = 48
+const NODE_WIDTH = 260
+const NODE_HEIGHT = 126
+const RANK_SEP = 156
+const NODE_SEP = 56
 
 export const NODE_SIZE = {
   width: NODE_WIDTH,
@@ -107,6 +108,12 @@ export function buildFlowGraph(dbNodes: NodeRecord[], visibleIds: Set<string>): 
       type: 'customEdge',
       animated: false,
       data: {},
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        width: 18,
+        height: 18,
+        color: 'hsl(var(--mindmap-edge))',
+      },
     }))
 
   return { nodes, edges }

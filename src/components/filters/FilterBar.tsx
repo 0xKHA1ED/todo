@@ -54,7 +54,7 @@ export function FilterBar() {
   }
 
   return (
-    <div className="flex max-w-4xl flex-wrap items-center gap-2 rounded-xl border bg-card/90 p-2 shadow-xl backdrop-blur">
+    <div className="flex max-w-4xl flex-wrap items-center gap-2 rounded-lg border bg-card/95 p-1.5 shadow-lg backdrop-blur">
       {URGENCIES.map((urgency) => (
         <Button
           key={urgency}
@@ -68,6 +68,14 @@ export function FilterBar() {
           )}
           onClick={() => toggleUrgency(urgency)}
         >
+          <span
+            className={cn(
+              'mr-1.5 h-2 w-2 rounded-full',
+              urgency === 'low' && 'bg-urgency-low',
+              urgency === 'normal' && 'bg-urgency-normal',
+              urgency === 'high' && 'bg-urgency-high',
+            )}
+          />
           {urgency}
         </Button>
       ))}

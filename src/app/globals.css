@@ -6,26 +6,29 @@
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 6%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 6%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 263 70% 68%;
-    --primary-foreground: 240 10% 3.9%;
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 65%;
-    --accent: 240 4% 18%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 63% 50%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 4% 18%;
-    --input: 240 4% 18%;
-    --ring: 263 70% 68%;
-    --radius: 0.75rem;
+    --background: 210 29% 96%;
+    --foreground: 220 35% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 35% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 35% 12%;
+    --primary: 203 85% 35%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 22% 91%;
+    --secondary-foreground: 218 28% 20%;
+    --muted: 210 22% 92%;
+    --muted-foreground: 217 14% 42%;
+    --accent: 158 44% 90%;
+    --accent-foreground: 166 56% 20%;
+    --destructive: 348 77% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 18% 80%;
+    --input: 214 18% 76%;
+    --ring: 203 85% 35%;
+    --radius: 0.5rem;
+    --canvas: 210 33% 97%;
+    --canvas-grid: 214 20% 78%;
+    --mindmap-edge: 214 24% 48%;
   }
 
   * {
@@ -38,10 +41,8 @@
   }
 
   body {
-    background:
-      radial-gradient(circle at top left, rgba(124, 58, 237, 0.22), transparent 36rem),
-      radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.16), transparent 32rem),
-      hsl(var(--background));
+    background: hsl(var(--background));
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 }
 
@@ -83,7 +84,25 @@
   }
 
   .tiptap-wrapper .tiptap code {
-    @apply rounded bg-zinc-900 px-1 py-0.5 text-sm;
+    @apply rounded bg-secondary px-1 py-0.5 text-sm;
+  }
+
+  .mindmap-canvas {
+    background: hsl(var(--canvas));
+  }
+
+  .mindmap-node-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .mindmap-edge-path {
+    transition:
+      stroke 150ms ease,
+      stroke-width 150ms ease;
   }
 
   .tiptap-wrapper .tiptap table {
@@ -97,5 +116,13 @@
 
   .react-flow__node.selected .mindmap-node {
     @apply ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+
+  .mindmap-canvas .react-flow__controls {
+    @apply overflow-hidden rounded-lg border border-border bg-card shadow-lg;
+  }
+
+  .mindmap-canvas .react-flow__controls-button {
+    @apply border-border bg-card text-foreground hover:bg-secondary;
   }
 }

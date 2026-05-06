@@ -1,9 +1,10 @@
 'use client'
 
-import { Loader2, LogOut, Maximize2, Plus } from 'lucide-react'
+import { Loader2, LogOut, Maximize2, Network, Plus } from 'lucide-react'
 import { useReactFlow } from '@xyflow/react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
+import { useFilter } from '@/hooks/useFilter'
 import { useAuthStore } from '@/lib/store/useAuthStore'
 import { useNodeStore } from '@/lib/store/useNodeStore'
 import { useUIStore } from '@/lib/store/useUIStore'
@@ -20,6 +21,7 @@ export function CanvasToolbar({ loading, error }: CanvasToolbarProps) {
   const nodes = useNodeStore((state) => state.nodes)
   const createNode = useNodeStore((state) => state.createNode)
   const requestTitleFocus = useUIStore((state) => state.requestTitleFocus)
+  const visibleIds = useFilter()
 
   async function addTopLevelNode() {
     try {
@@ -36,7 +38,11 @@ export function CanvasToolbar({ loading, error }: CanvasToolbarProps) {
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-xl border bg-card/90 p-2 shadow-xl backdrop-blur">
+    <div className="flex items-center gap-2 rounded-lg border bg-card/95 p-1.5 shadow-lg backdrop-blur">
+      <div className="hidden items-center gap-1.5 rounded-md bg-secondary px-2.5 py-1 text-xs font-semibold text-muted-foreground sm:flex">
+        <Network className="h-3.5 w-3.5" />
+        {visibleIds.size}/{nodes.length}
+      </div>
       <Button size="sm" variant="secondary" onClick={() => fitView({ padding: 0.2, duration: 400 })}>
         <Maximize2 className="mr-2 h-3.5 w-3.5" />
         Fit

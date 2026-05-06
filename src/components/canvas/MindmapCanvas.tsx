@@ -33,10 +33,11 @@ function isDescendant(nodes: NodeRecord[], ancestorId: string, candidateId: stri
 }
 
 function minimapColor(node: Node) {
+  if (node.data.completed) return '#94a3b8'
   const urgency = node.data.urgency
-  if (urgency === 'high') return '#ef4444'
-  if (urgency === 'low') return '#22c55e'
-  return '#eab308'
+  if (urgency === 'high') return '#e11d48'
+  if (urgency === 'low') return '#2f9e44'
+  return '#d97706'
 }
 
 export function MindmapCanvas() {
@@ -117,20 +118,31 @@ export function MindmapCanvas() {
         onNodeClick={(_event, node) => openPanel(node.id)}
         onNodeDragStop={handleNodeDragStop}
         fitView
-        minZoom={0.1}
-        maxZoom={2}
+        minZoom={0.08}
+        maxZoom={1.8}
+        snapToGrid
+        snapGrid={[16, 16]}
+        className="mindmap-canvas"
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1} className="opacity-30" />
+        <Background variant={BackgroundVariant.Lines} gap={32} size={1} color="hsl(var(--canvas-grid))" className="opacity-45" />
         <Controls className="!border-border !bg-card !text-foreground" />
-        <MiniMap nodeColor={minimapColor} pannable zoomable className="!border !border-border !bg-card/90" />
+        <MiniMap
+          nodeColor={minimapColor}
+          nodeStrokeColor="#ffffff"
+          nodeBorderRadius={8}
+          maskColor="rgba(15, 23, 42, 0.08)"
+          pannable
+          zoomable
+          className="!border !border-border !bg-card/95 !shadow-lg"
+        />
       </ReactFlow>
 
       {!loading && dbNodes.length > 0 && flowGraph.nodes.length === 0 && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-card/90 px-5 py-4 text-center shadow-xl"
+          className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-card/95 px-5 py-4 text-center shadow-lg"
         >
           <p className="font-medium">No nodes match the current filters.</p>
           <p className="mt-1 text-sm text-muted-foreground">Clear filters to restore the full mindmap.</p>

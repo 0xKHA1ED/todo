@@ -48,9 +48,9 @@ const config: Config = {
           foreground: 'hsl(var(--card-foreground))',
         },
         urgency: {
-          low: '#22c55e',
-          normal: '#eab308',
-          high: '#ef4444',
+          low: '#2f9e44',
+          normal: '#d97706',
+          high: '#e11d48',
         },
       },
       borderRadius: {

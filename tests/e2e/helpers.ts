@@ -77,6 +77,51 @@ export async function updateRootNode(patch: {
   await supabase.auth.signOut()
 }
 
+export async function seedNodeTree(
+  nodes: Array<{
+    title: string
+    parentTitle?: string
+    urgency?: 'low' | 'normal' | 'high'
+    tags?: string[]
+  }>,
+) {
+  const { supabase, userId } = await createAuthenticatedE2EClient()
+
+  const { data: root, error: rootError } = await supabase
+    .from('nodes')
+    .select('id')
+    .eq('user_id', userId)
+    .is('parent_id', null)
+    .single()
+  if (rootError) throw rootError
+
+  const idsByTitle = new Map<string, string>([['Main', root.id]])
+
+  for (let index = 0; index < nodes.length; index += 1) {
+    const node = nodes[index]
+    const parentId = idsByTitle.get(node.parentTitle ?? 'Main')
+    if (!parentId) throw new Error(`Missing parent node "${node.parentTitle}".`)
+
+    const { data, error } = await supabase
+      .from('nodes')
+      .insert({
+        user_id: userId,
+        parent_id: parentId,
+        title: node.title,
+        urgency: node.urgency ?? 'normal',
+        tags: node.tags ?? [],
+        description: ROOT_DESCRIPTION,
+        sort_order: index,
+      })
+      .select('id')
+      .single()
+    if (error) throw error
+    idsByTitle.set(node.title, data.id)
+  }
+
+  await supabase.auth.signOut()
+}
+
 export async function signIn(page: Page) {
   requireE2ECredentials()
   await resetE2EState()

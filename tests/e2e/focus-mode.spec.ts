@@ -19,12 +19,16 @@ test('focus mode confirms and isolates a node subtree until exit', async ({ page
   const focusButton = focusParent.getByRole('button', { name: 'Focus on Focus parent' })
   await expect(focusButton).toBeVisible()
 
-  const dialogPromise = page.waitForEvent('dialog')
+  const dialogPromise = new Promise<string>((resolve) => {
+    page.once('dialog', async (dialog) => {
+      const message = dialog.message()
+      await dialog.accept()
+      resolve(message)
+    })
+  })
   await focusButton.focus()
   await page.keyboard.press('Enter')
-  const dialog = await dialogPromise
-  expect(dialog.message()).toContain('Focus on "Focus parent"')
-  await dialog.accept()
+  await expect(dialogPromise).resolves.toContain('Focus on "Focus parent"')
 
   await expect(page.locator('.react-flow__node')).toHaveCount(2)
   await expect(page.locator('.react-flow__node', { hasText: 'Focus parent' })).toBeVisible()

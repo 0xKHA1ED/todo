@@ -1,10 +1,9 @@
 'use client'
 
-import { Loader2, LogOut, Maximize2, Network, Plus } from 'lucide-react'
+import { Loader2, LogOut, Maximize2, Plus } from 'lucide-react'
 import { useReactFlow } from '@xyflow/react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
-import { useFilter } from '@/hooks/useFilter'
 import { useAuthStore } from '@/lib/store/useAuthStore'
 import { useNodeStore } from '@/lib/store/useNodeStore'
 import { useUIStore } from '@/lib/store/useUIStore'
@@ -18,15 +17,16 @@ export function CanvasToolbar({ loading, error }: CanvasToolbarProps) {
   const { toast } = useToast()
   const { fitView } = useReactFlow()
   const signOut = useAuthStore((state) => state.signOut)
-  const nodes = useNodeStore((state) => state.nodes)
   const createNode = useNodeStore((state) => state.createNode)
+  const currentPlaceId = useUIStore((state) => state.currentPlaceId)
+  const showDone = useUIStore((state) => state.showDone)
+  const setShowDone = useUIStore((state) => state.setShowDone)
   const requestTitleFocus = useUIStore((state) => state.requestTitleFocus)
-  const visibleIds = useFilter()
 
-  async function addTopLevelNode() {
+  async function addChild() {
+    if (!currentPlaceId) return
     try {
-      const root = nodes.find((node) => node.parent_id === null)
-      const node = await createNode({ parent_id: root?.id ?? null, title: 'New Task' })
+      const node = await createNode({ parent_id: currentPlaceId, title: 'New Task' })
       requestTitleFocus(node.id)
     } catch (caught) {
       toast({
@@ -39,17 +39,21 @@ export function CanvasToolbar({ loading, error }: CanvasToolbarProps) {
 
   return (
     <div className="flex items-center gap-2 rounded-lg border bg-card/95 p-1.5 shadow-lg backdrop-blur">
-      <div className="hidden items-center gap-1.5 rounded-md bg-secondary px-2.5 py-1 text-xs font-semibold text-muted-foreground sm:flex">
-        <Network className="h-3.5 w-3.5" />
-        {visibleIds.size}/{nodes.length}
-      </div>
       <Button size="sm" variant="secondary" onClick={() => fitView({ padding: 0.2, duration: 400 })}>
         <Maximize2 className="mr-2 h-3.5 w-3.5" />
         Fit
       </Button>
-      <Button size="sm" onClick={addTopLevelNode}>
+      <Button size="sm" onClick={addChild}>
         <Plus className="mr-2 h-3.5 w-3.5" />
         Add
+      </Button>
+      <Button
+        size="sm"
+        variant={showDone ? 'default' : 'secondary'}
+        aria-pressed={showDone}
+        onClick={() => setShowDone(!showDone)}
+      >
+        Show done
       </Button>
       <Button size="sm" variant="ghost" onClick={() => signOut().catch(() => undefined)}>
         <LogOut className="mr-2 h-3.5 w-3.5" />

@@ -133,14 +133,20 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
     const ids = visitTargetIds(get().nodes, placeId)
     if (ids.length === 0) return
     const timestamp = new Date().toISOString()
-    const previous = get().nodes
+    const previousVisitedAt = new Map(
+      get().nodes.filter((node) => ids.includes(node.id)).map((node) => [node.id, node.last_visited_at]),
+    )
     set({
       nodes: get().nodes.map((node) => (ids.includes(node.id) ? { ...node, last_visited_at: timestamp } : node)),
     })
     try {
       await Promise.all(ids.map((id) => queries.updateNode(id, { last_visited_at: timestamp })))
     } catch (error) {
-      set({ nodes: previous })
+      set({
+        nodes: get().nodes.map((node) =>
+          previousVisitedAt.has(node.id) ? { ...node, last_visited_at: previousVisitedAt.get(node.id) ?? null } : node,
+        ),
+      })
       throw error
     }
   },

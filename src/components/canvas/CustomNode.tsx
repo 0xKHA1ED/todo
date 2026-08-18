@@ -1,106 +1,89 @@
 import { memo } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
-import { Badge } from '@/components/ui/badge'
+import { DENSITY_SIZE } from '@/lib/flow/treeLayout'
+import { daysUntil } from '@/lib/place/placeModel'
 import { useUIStore } from '@/lib/store/useUIStore'
 import { cn, formatDate } from '@/lib/utils'
-import type { FlowNode } from '@/types'
+import type { FlowNode, NodeData } from '@/types'
 
-const URGENCY_STYLES = {
-  low: {
-    stripe: 'bg-urgency-low',
-    progress: 'bg-urgency-low',
-    pill: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  },
-  normal: {
-    stripe: 'bg-urgency-normal',
-    progress: 'bg-urgency-normal',
-    pill: 'border-amber-200 bg-amber-50 text-amber-700',
-  },
-  high: {
-    stripe: 'bg-urgency-high',
-    progress: 'bg-urgency-high',
-    pill: 'border-rose-200 bg-rose-50 text-rose-700',
-  },
+function loudDueLabel(date: string | null, today: Date): string | null {
+  const until = daysUntil(date, today)
+  if (until === null) return null
+  if (until < 0) return 'OVERDUE'
+  if (until === 0) return 'DUE TODAY'
+  return null
+}
+
+function areaHints(data: NodeData): string {
+  const parts = [`${data.insideCount} inside`]
+  if (data.dueCount > 0) parts.push(`${data.dueCount} due`)
+  if (data.staleDays === -1) parts.push('never')
+  else if (data.staleDays != null) parts.push(`${data.staleDays}d`)
+  return parts.join(' · ')
 }
 
 export const CustomNode = memo(({ id, data }: NodeProps<FlowNode>) => {
   const openPanel = useUIStore((state) => state.openPanel)
-  const urgencyStyle = URGENCY_STYLES[data.urgency]
-  const taskSummary =
-    data.totalSubtaskCount > 0
-      ? `${data.completedSubtaskCount}/${data.totalSubtaskCount}`
-      : data.completed
-        ? 'Done'
-        : 'Open'
+  const size = DENSITY_SIZE[data.density]
+  const isArea = data.insideCount > 0
+  const today = new Date()
+  const dueLabel = loudDueLabel(data.date, today)
 
   return (
     <div
       className={cn(
-        'mindmap-node relative h-[126px] w-[260px] overflow-hidden rounded-lg border border-border/90 bg-card text-left shadow-md transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background',
+        'mindmap-node relative overflow-hidden rounded-lg bg-card text-left',
+        data.density === 'loud' ? 'border-2 border-rose-500' : 'border border-border/90',
         data.completed && 'bg-card/80',
       )}
+      style={{ width: size.width, height: size.height }}
     >
       <Handle type="target" position={Position.Left} className="opacity-0" />
       <Handle type="source" position={Position.Right} className="opacity-0" />
-      <span className={cn('absolute inset-y-0 left-0 w-1.5', urgencyStyle.stripe)} />
 
-      <button
-        type="button"
-        aria-label={`Open ${data.title}`}
-        onClick={() => openPanel(id)}
-        className="block h-full w-full cursor-pointer text-left focus-visible:outline-none"
-      >
-        <div className="flex h-full flex-col px-4 py-3 pl-5">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <p
-                className={cn(
-                  'mindmap-node-title text-[15px] font-semibold leading-snug text-card-foreground',
-                  data.completed && 'text-muted-foreground line-through',
-                )}
-              >
-                {data.title}
-              </p>
-              <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
-                <span className={cn('rounded-md border px-1.5 py-0.5 capitalize leading-none', urgencyStyle.pill)}>
-                  {data.urgency}
-                </span>
-                {data.date && <span className="truncate">{formatDate(data.date)}</span>}
-              </div>
-            </div>
-
-            <div className="shrink-0 pr-8 text-right">
-              <p className="text-lg font-semibold leading-none text-card-foreground">{data.completionPercent}%</p>
-              <p className="mt-1 text-[10px] font-semibold uppercase leading-none text-muted-foreground">{taskSummary}</p>
-            </div>
-          </div>
-
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">
-            <span
-              className={cn('block h-full rounded-full', urgencyStyle.progress)}
-              style={{ width: `${data.completionPercent}%` }}
-            />
-          </div>
-
-          <div className="mt-2 flex h-5 min-w-0 items-center gap-1 overflow-hidden">
-            {data.completed && (
-              <Badge variant="outline" className="shrink-0 border-emerald-200 bg-emerald-50 px-1.5 py-0 text-[10px] text-emerald-700">
-                Done
-              </Badge>
+      {isArea ? (
+        <div className="flex h-full w-full flex-col justify-center px-3 py-2">
+          <p
+            className={cn(
+              'mindmap-node-title text-[15px] font-semibold leading-snug text-card-foreground',
+              data.completed && 'text-muted-foreground line-through',
+              data.density === 'compact' && 'truncate',
             )}
-            {data.tags.slice(0, 2).map((tag) => (
-              <Badge key={tag} variant="secondary" className="min-w-0 max-w-[5.75rem] truncate px-1.5 py-0 text-[10px] font-medium">
-                {tag}
-              </Badge>
-            ))}
-            {data.tags.length > 2 && (
-              <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[10px] font-medium">
-                +{data.tags.length - 2}
-              </Badge>
-            )}
-          </div>
+          >
+            {data.title}
+          </p>
+          {data.density !== 'compact' && (
+            <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">{areaHints(data)}</p>
+          )}
         </div>
-      </button>
+      ) : (
+        <button
+          type="button"
+          aria-label={`Open ${data.title}`}
+          onClick={() => openPanel(id)}
+          className="block h-full w-full cursor-pointer text-left focus-visible:outline-none"
+        >
+          <div className="flex h-full flex-col justify-center px-3 py-2">
+            <p
+              className={cn(
+                'mindmap-node-title text-[15px] font-semibold leading-snug text-card-foreground',
+                data.completed && 'text-muted-foreground line-through',
+                data.density === 'compact' && 'truncate',
+              )}
+            >
+              {data.title}
+            </p>
+            {data.density === 'loud' && dueLabel && (
+              <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-rose-600">{dueLabel}</p>
+            )}
+            {data.density === 'medium' && (
+              <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">
+                {data.date ? formatDate(data.date) : 'high'}
+              </p>
+            )}
+          </div>
+        </button>
+      )}
     </div>
   )
 })

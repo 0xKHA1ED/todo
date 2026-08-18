@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Response } from '@playwright/test'
 import { fitCanvas, requireE2ECredentials, seedNodeTree, signIn } from './helpers'
 
 test.beforeEach(requireE2ECredentials)
@@ -14,7 +14,15 @@ function localISODate(daysFromToday: number) {
 
 function isMissingLastVisitedColumn(error: unknown) {
   const text = typeof error === 'string' ? error : JSON.stringify(error)
-  return text.includes('last_visited_at') || text.includes('PGRST204')
+  return text.includes('last_visited_at') && text.includes('PGRST204')
+}
+
+function isVisitNodesWrite(response: Response) {
+  const method = response.request().method()
+  if (method !== 'PATCH' && method !== 'POST') return false
+  if (!response.url().includes('/rest/v1/nodes')) return false
+  if (!response.ok()) return false
+  return (response.request().postData() ?? '').includes('last_visited_at')
 }
 
 test('Now ranks overdue first with overflow', async ({ page }) => {
@@ -57,11 +65,22 @@ test('Forgotten opens a stale area and visit persists across reload', async ({ p
   await page.reload()
   const forgotten = page.getByRole('button', { name: 'Forgotten Design' })
   await expect(forgotten).toBeVisible()
+
+  const visitPersisted = page.waitForResponse(isVisitNodesWrite)
   await forgotten.click()
   await expect(page.getByRole('navigation', { name: 'Breadcrumb', includeHidden: true })).toContainText('Design')
+  await visitPersisted
+  try {
+    await page.waitForResponse(isVisitNodesWrite, { timeout: 5_000 })
+  } catch {
+    // One successful last_visited_at write is enough; a second (ancestor) write may already have finished.
+  }
 
   await page.reload()
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Home')
+  const nowHeading = page.getByRole('heading', { name: 'Now' })
+  const forgottenSlot = page.getByRole('button', { name: /^Forgotten / })
+  await expect(nowHeading.or(forgottenSlot).or(page.locator('.react-flow__node').first())).toBeVisible()
   await expect(page.getByRole('button', { name: 'Forgotten Design' })).toHaveCount(0)
 })
 

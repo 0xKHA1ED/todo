@@ -11,6 +11,7 @@ export function useCommandSearch(query: string): CommandSearchResult[] {
   return useMemo(() => {
     const normalized = query.trim().toLowerCase()
     return nodes
+      .filter((node) => node.parent_id !== null)
       .map((node) => ({
         id: node.id,
         title: node.title,

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useReactFlow } from '@xyflow/react'
 import {
   CommandDialog,
   CommandEmpty,
@@ -10,28 +9,32 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import { NODE_SIZE } from '@/lib/flow/treeLayout'
+import { useNodeStore } from '@/lib/store/useNodeStore'
 import { useUIStore } from '@/lib/store/useUIStore'
 import { useCommandSearch } from '@/hooks/useCommandSearch'
 
 export function CommandPalette() {
   const [query, setQuery] = useState('')
   const results = useCommandSearch(query)
-  const { getNode, setCenter } = useReactFlow()
+  const nodes = useNodeStore((state) => state.nodes)
   const isCommandPaletteOpen = useUIStore((state) => state.isCommandPaletteOpen)
   const toggleCommandPalette = useUIStore((state) => state.toggleCommandPalette)
   const openPanel = useUIStore((state) => state.openPanel)
+  const enterPlace = useUIStore((state) => state.enterPlace)
+  const selectNode = useUIStore((state) => state.selectNode)
 
   function handleSelect(nodeId: string) {
+    const hit = nodes.find((node) => node.id === nodeId)
     toggleCommandPalette(false)
     setQuery('')
-    openPanel(nodeId)
-    const node = getNode(nodeId)
-    if (node) {
-      setCenter(node.position.x + NODE_SIZE.width / 2, node.position.y + NODE_SIZE.height / 2, {
-        zoom: 1.2,
-        duration: 600,
-      })
+    if (!hit) return
+    if (hit.parent_id) {
+      enterPlace(hit.parent_id)
+      selectNode(hit.id)
+      const isArea = nodes.some((node) => node.parent_id === hit.id)
+      if (!isArea) openPanel(hit.id)
+    } else {
+      enterPlace(hit.id)
     }
   }
 

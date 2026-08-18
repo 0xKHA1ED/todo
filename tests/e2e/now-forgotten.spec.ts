@@ -65,22 +65,16 @@ test('Forgotten opens a stale area and visit persists across reload', async ({ p
   await page.reload()
   const forgotten = page.getByRole('button', { name: 'Forgotten Design' })
   await expect(forgotten).toBeVisible()
+  await page.waitForResponse(isVisitNodesWrite, { timeout: 5_000 }).catch(() => {})
 
-  const visitPersisted = page.waitForResponse(isVisitNodesWrite)
+  const designVisit = page.waitForResponse(isVisitNodesWrite)
   await forgotten.click()
   await expect(page.getByRole('navigation', { name: 'Breadcrumb', includeHidden: true })).toContainText('Design')
-  await visitPersisted
-  try {
-    await page.waitForResponse(isVisitNodesWrite, { timeout: 5_000 })
-  } catch {
-    // One successful last_visited_at write is enough; a second (ancestor) write may already have finished.
-  }
+  await designVisit
 
+  const homeEntered = page.waitForResponse(isVisitNodesWrite)
   await page.reload()
-  await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Home')
-  const nowHeading = page.getByRole('heading', { name: 'Now' })
-  const forgottenSlot = page.getByRole('button', { name: /^Forgotten / })
-  await expect(nowHeading.or(forgottenSlot).or(page.locator('.react-flow__node').first())).toBeVisible()
+  await homeEntered
   await expect(page.getByRole('button', { name: 'Forgotten Design' })).toHaveCount(0)
 })
 

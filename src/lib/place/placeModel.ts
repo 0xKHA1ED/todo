@@ -31,6 +31,25 @@ export function subtreeDescendants(nodes: NodeRecord[], placeId: string): NodeRe
   return nodes.filter((node) => node.id !== placeId && ids.has(node.id))
 }
 
+export function visitTargetIds(nodes: NodeRecord[], placeId: string): string[] {
+  const byId = new Map(nodes.map((node) => [node.id, node]))
+  if (!byId.has(placeId)) return []
+
+  const ids: string[] = []
+  const visited = new Set<string>()
+  let currentId: string | null = placeId
+
+  while (currentId && !visited.has(currentId)) {
+    const node = byId.get(currentId)
+    if (!node) break
+    visited.add(currentId)
+    ids.push(currentId)
+    currentId = node.parent_id
+  }
+
+  return ids
+}
+
 export function daysUntil(date: string | null, today: Date): number | null {
   if (!date) return null
   const [year, month, day] = date.split('-').map(Number)

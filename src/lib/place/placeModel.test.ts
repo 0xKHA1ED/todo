@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pickForgotten, rankNow, STALE_MS, visibleChildren } from './placeModel'
+import { pickForgotten, rankNow, STALE_MS, visibleChildren, visitTargetIds } from './placeModel'
 import type { NodeRecord, Urgency } from '@/types'
 
 function node(partial: Partial<NodeRecord> & Pick<NodeRecord, 'id' | 'title'>): NodeRecord {
@@ -210,5 +210,18 @@ describe('visibleChildren', () => {
     ]
     expect(visibleChildren(nodes, 'home', false, today, now).map((view) => view.node.title)).toEqual([])
     expect(visibleChildren(nodes, 'home', true, today, now).map((view) => view.node.title)).toEqual(['Done', 'Old'])
+  })
+})
+
+describe('visitTargetIds', () => {
+  it('includes the place and ancestors, not descendants', () => {
+    const nodes = [
+      home,
+      node({ id: 'biz', title: 'Business' }),
+      node({ id: 'design', title: 'Design', parent_id: 'biz' }),
+      node({ id: 'logo', title: 'Logo', parent_id: 'design' }),
+    ]
+    expect(visitTargetIds(nodes, 'design')).toEqual(['design', 'biz', 'home'])
+    expect(visitTargetIds(nodes, 'design')).not.toContain('logo')
   })
 })

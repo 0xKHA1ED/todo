@@ -15,7 +15,6 @@ import {
   type EdgeTypes,
 } from '@xyflow/react'
 import { motion } from 'framer-motion'
-import { useFilter } from '@/hooks/useFilter'
 import { buildFlowGraph } from '@/lib/flow/treeLayout'
 import { useNodeStore } from '@/lib/store/useNodeStore'
 import { useUIStore } from '@/lib/store/useUIStore'
@@ -47,8 +46,12 @@ export function MindmapCanvas() {
   const reparentNode = useNodeStore((state) => state.reparentNode)
   const updateNode = useNodeStore((state) => state.updateNode)
   const openPanel = useUIStore((state) => state.openPanel)
-  const visibleIds = useFilter()
-  const flowGraph = useMemo(() => buildFlowGraph(dbNodes, visibleIds), [dbNodes, visibleIds])
+  const currentPlaceId = useUIStore((state) => state.currentPlaceId)
+  const showDone = useUIStore((state) => state.showDone)
+  const root = dbNodes.find((node) => node.parent_id === null)
+  const placeId = currentPlaceId ?? root?.id ?? ''
+  const flowGraph = useMemo(() => buildFlowGraph(dbNodes, placeId, showDone), [dbNodes, placeId, showDone])
+  const visibleFlowIds = useMemo(() => new Set(flowGraph.nodes.map((node) => node.id)), [flowGraph.nodes])
   const [nodes, setNodes, onNodesChange] = useNodesState(flowGraph.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(flowGraph.edges)
   const { getIntersectingNodes, fitView } = useReactFlow()
@@ -81,7 +84,7 @@ export function MindmapCanvas() {
 
         const target = getIntersectingNodes(draggedNode)
           .filter((node) => node.id !== draggedNode.id)
-          .find((node) => visibleIds.has(node.id))
+          .find((node) => visibleFlowIds.has(node.id))
 
         if (!target || target.id === source.parent_id) return
 
@@ -103,7 +106,7 @@ export function MindmapCanvas() {
         })
       }
     },
-    [dbNodes, getIntersectingNodes, reparentNode, toast, updateNode, visibleIds],
+    [dbNodes, getIntersectingNodes, reparentNode, toast, updateNode, visibleFlowIds],
   )
 
   return (

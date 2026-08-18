@@ -1,16 +1,14 @@
-import dagre from 'dagre'
-import { MarkerType } from '@xyflow/react'
-import type { FlowEdge, FlowNode, NodeData, NodeRecord, NodeProgressSummary } from '@/types'
+import type { FlowEdge, FlowNode, NodeRecord, NodeProgressSummary } from '@/types'
+import { visibleChildren } from '@/lib/place/placeModel'
 
-const NODE_WIDTH = 260
-const NODE_HEIGHT = 126
-const RANK_SEP = 156
-const NODE_SEP = 56
+export const DENSITY_SIZE = {
+  loud: { width: 240, height: 92 },
+  medium: { width: 200, height: 72 },
+  area: { width: 200, height: 72 },
+  compact: { width: 168, height: 40 },
+} as const
 
-export const NODE_SIZE = {
-  width: NODE_WIDTH,
-  height: NODE_HEIGHT,
-}
+export const NODE_SIZE = DENSITY_SIZE.loud
 
 function buildProgressLookup(dbNodes: NodeRecord[]) {
   const childrenByParent = new Map<string, NodeRecord[]>()
@@ -60,61 +58,39 @@ function buildProgressLookup(dbNodes: NodeRecord[]) {
   return progressByNode
 }
 
-export function buildFlowGraph(dbNodes: NodeRecord[], visibleIds: Set<string>): { nodes: FlowNode[]; edges: FlowEdge[] } {
-  const visible = dbNodes.filter((node) => visibleIds.has(node.id))
+export function buildFlowGraph(
+  dbNodes: NodeRecord[],
+  placeId: string,
+  showDone: boolean,
+  today: Date = new Date(),
+  now: Date = new Date(),
+): { nodes: FlowNode[]; edges: FlowEdge[] } {
+  const views = visibleChildren(dbNodes, placeId, showDone, today, now)
   const progressLookup = buildProgressLookup(dbNodes)
-  const graph = new dagre.graphlib.Graph()
-  graph.setGraph({ rankdir: 'LR', ranksep: RANK_SEP, nodesep: NODE_SEP })
-  graph.setDefaultEdgeLabel(() => ({}))
 
-  visible.forEach((node) => {
-    graph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT })
-  })
-
-  visible.forEach((node) => {
-    if (node.parent_id && visibleIds.has(node.parent_id)) {
-      graph.setEdge(node.parent_id, node.id)
-    }
-  })
-
-  dagre.layout(graph)
-
-  const nodes: FlowNode[] = visible.map((node) => {
-    const layoutNode = graph.node(node.id)
-    return {
-      id: node.id,
+  let y = 0
+  const nodes: FlowNode[] = views.map((view) => {
+    const size = DENSITY_SIZE[view.density]
+    const flowNode: FlowNode = {
+      id: view.node.id,
       type: 'customNode',
-      position: {
-        x: (layoutNode?.x ?? node.position_x) - NODE_WIDTH / 2,
-        y: (layoutNode?.y ?? node.position_y) - NODE_HEIGHT / 2,
-      },
+      position: { x: 0, y },
       data: {
-        ...node,
-        ...(progressLookup.get(node.id) ?? {
+        ...view.node,
+        ...(progressLookup.get(view.node.id) ?? {
           totalSubtaskCount: 0,
           completedSubtaskCount: 0,
-          completionPercent: node.completed ? 100 : 0,
+          completionPercent: view.node.completed ? 100 : 0,
         }),
-      } as NodeData,
-    }
-  })
-
-  const edges: FlowEdge[] = visible
-    .filter((node) => node.parent_id && visibleIds.has(node.parent_id))
-    .map((node) => ({
-      id: `${node.parent_id}-${node.id}`,
-      source: node.parent_id!,
-      target: node.id,
-      type: 'customEdge',
-      animated: false,
-      data: {},
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        width: 18,
-        height: 18,
-        color: 'hsl(var(--mindmap-edge))',
+        density: view.density,
+        insideCount: view.insideCount,
+        dueCount: view.dueCount,
+        staleDays: view.staleDays,
       },
-    }))
-
-  return { nodes, edges }
+      style: { width: size.width, height: size.height },
+    }
+    y += size.height + 16
+    return flowNode
+  })
+  return { nodes, edges: [] }
 }

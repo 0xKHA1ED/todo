@@ -17,6 +17,7 @@ export interface NodeRecord {
   sort_order: number
   created_at: string
   updated_at: string
+  last_visited_at: string | null
 }
 
 export interface CreateNodePayload {
@@ -30,7 +31,7 @@ export interface CreateNodePayload {
 }
 
 export type UpdateNodePayload = Partial<
-  Pick<NodeRecord, 'parent_id' | 'title' | 'completed' | 'urgency' | 'date' | 'tags' | 'description' | 'position_x' | 'position_y' | 'sort_order'>
+  Pick<NodeRecord, 'parent_id' | 'title' | 'completed' | 'urgency' | 'date' | 'tags' | 'description' | 'position_x' | 'position_y' | 'sort_order' | 'last_visited_at'>
 >
 
 export interface NodeProgressSummary {
@@ -39,7 +40,15 @@ export interface NodeProgressSummary {
   completionPercent: number
 }
 
-export type NodeData = NodeRecord & NodeProgressSummary & Record<string, unknown>
+export type NodeDensity = 'loud' | 'medium' | 'area' | 'compact'
+
+export type NodeData = NodeRecord &
+  NodeProgressSummary & {
+    density: NodeDensity
+    insideCount: number
+    dueCount: number
+    staleDays: number | null
+  } & Record<string, unknown>
 export type FlowNode = Node<NodeData, 'customNode'>
 export type FlowEdge = Edge<Record<string, never>, 'customEdge'>
 

@@ -74,3 +74,40 @@ export function rankNow(
     overflow: Math.max(0, ranked.length - 5),
   }
 }
+
+export const STALE_MS = 14 * 24 * 60 * 60 * 1000
+
+export function isArea(nodes: NodeRecord[], nodeId: string): boolean {
+  return nodes.some((node) => node.parent_id === nodeId)
+}
+
+export function isStale(node: NodeRecord, now: Date): boolean {
+  if (node.last_visited_at === null) return true
+  return now.getTime() - Date.parse(node.last_visited_at) > STALE_MS
+}
+
+function visitedAtMs(node: NodeRecord): number {
+  return node.last_visited_at === null ? 0 : Date.parse(node.last_visited_at)
+}
+
+function oldest(nodes: NodeRecord[]): NodeRecord | null {
+  if (nodes.length === 0) return null
+  return [...nodes].sort((a, b) => visitedAtMs(a) - visitedAtMs(b))[0] ?? null
+}
+
+export function pickForgotten(
+  nodes: NodeRecord[],
+  placeId: string,
+  now: Date,
+  nowItemIds: Set<string>,
+): NodeRecord | null {
+  const children = getDirectChildren(nodes, placeId).filter((node) => !node.completed)
+  const staleAreas = children.filter((node) => isArea(nodes, node.id) && isStale(node, now))
+  const staleArea = oldest(staleAreas)
+  if (staleArea) return staleArea
+
+  const staleLeaves = children.filter(
+    (node) => !isArea(nodes, node.id) && isStale(node, now) && !nowItemIds.has(node.id),
+  )
+  return oldest(staleLeaves)
+}

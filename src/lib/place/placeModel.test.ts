@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rankNow } from './placeModel'
+import { pickForgotten, rankNow, STALE_MS } from './placeModel'
 import type { NodeRecord, Urgency } from '@/types'
 
 function node(partial: Partial<NodeRecord> & Pick<NodeRecord, 'id' | 'title'>): NodeRecord {
@@ -63,5 +63,64 @@ describe('rankNow', () => {
     ]
     const result = rankNow(nodes, 'home', today)
     expect(result.items.map((item) => item.title)).toEqual(['Pay ads'])
+  })
+})
+
+describe('pickForgotten', () => {
+  const now = new Date('2026-08-18T12:00:00.000Z')
+
+  it('prefers the oldest stale area over a stale leaf', () => {
+    const nodes = [
+      home,
+      node({
+        id: 'design',
+        title: 'Design',
+        last_visited_at: new Date(now.getTime() - STALE_MS - 1000).toISOString(),
+      }),
+      node({ id: 'logo', title: 'Logo', parent_id: 'design' }),
+      node({
+        id: 'undated-leaf',
+        title: 'Someday leaf',
+        last_visited_at: new Date(now.getTime() - STALE_MS * 3).toISOString(),
+      }),
+    ]
+    const picked = pickForgotten(nodes, 'home', now, new Set())
+    expect(picked?.title).toBe('Design')
+  })
+
+  it('resurfaces a stale leaf when no stale area exists, skipping Now items', () => {
+    const nodes = [
+      home,
+      node({
+        id: 'in-now',
+        title: 'Due leaf',
+        date: '2026-08-18',
+        last_visited_at: new Date(now.getTime() - STALE_MS * 2).toISOString(),
+      }),
+      node({
+        id: 'stale',
+        title: 'Forgotten leaf',
+        last_visited_at: new Date(now.getTime() - STALE_MS - 1000).toISOString(),
+      }),
+    ]
+    const picked = pickForgotten(nodes, 'home', now, new Set(['in-now']))
+    expect(picked?.title).toBe('Forgotten leaf')
+  })
+
+  it('returns null when nothing is stale', () => {
+    const nodes = [
+      home,
+      node({ id: 'fresh', title: 'Fresh', last_visited_at: now.toISOString() }),
+    ]
+    expect(pickForgotten(nodes, 'home', now, new Set())).toBeNull()
+  })
+
+  it('treats null last_visited_at as stale', () => {
+    const nodes = [
+      home,
+      node({ id: 'area', title: 'Health' }),
+      node({ id: 'gym', title: 'Gym', parent_id: 'area' }),
+    ]
+    expect(pickForgotten(nodes, 'home', now, new Set())?.title).toBe('Health')
   })
 })

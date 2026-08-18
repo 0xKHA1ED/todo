@@ -70,7 +70,8 @@ export function MindmapCanvas() {
   )
 
   const handleNodeDoubleClick = useCallback(
-    (_event: MouseEvent, node: FlowNode) => {
+    (event: MouseEvent, node: FlowNode) => {
+      event.stopPropagation()
       if (node.data.insideCount > 0) {
         enterPlace(node.id)
       }
@@ -133,6 +134,8 @@ export function MindmapCanvas() {
         onNodeClick={handleNodeClick}
         onNodeDoubleClick={handleNodeDoubleClick}
         onNodeDragStop={handleNodeDragStop}
+        zoomOnDoubleClick={false}
+        deleteKeyCode={null}
         fitView
         minZoom={0.08}
         maxZoom={1.8}

@@ -1,6 +1,7 @@
 'use client'
 
 import { create } from 'zustand'
+import { visitTargetIds } from '@/lib/place/placeModel'
 import * as queries from '@/lib/supabase/queries'
 import { useAuthStore } from '@/lib/store/useAuthStore'
 import { defaultEditorContent } from '@/lib/utils'
@@ -15,6 +16,7 @@ interface NodeStore {
   updateNode: (id: string, patch: UpdateNodePayload) => Promise<void>
   deleteNode: (id: string) => Promise<void>
   reparentNode: (id: string, newParentId: string | null) => Promise<void>
+  markVisited: (placeId: string) => Promise<void>
   getChildren: (parentId: string | null) => NodeRecord[]
   getAncestors: (id: string) => NodeRecord[]
   getSubtreeIds: (id: string) => string[]
@@ -121,6 +123,22 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
     }))
     try {
       await queries.reparentNode(id, newParentId)
+    } catch (error) {
+      set({ nodes: previous })
+      throw error
+    }
+  },
+
+  async markVisited(placeId: string) {
+    const ids = visitTargetIds(get().nodes, placeId)
+    if (ids.length === 0) return
+    const timestamp = new Date().toISOString()
+    const previous = get().nodes
+    set({
+      nodes: get().nodes.map((node) => (ids.includes(node.id) ? { ...node, last_visited_at: timestamp } : node)),
+    })
+    try {
+      await Promise.all(ids.map((id) => queries.updateNode(id, { last_visited_at: timestamp })))
     } catch (error) {
       set({ nodes: previous })
       throw error

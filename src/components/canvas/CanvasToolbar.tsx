@@ -1,6 +1,6 @@
 'use client'
 
-import { Loader2, LogOut, Maximize2, Minimize2, Network, Plus } from 'lucide-react'
+import { Loader2, LogOut, Maximize2, Network, Plus } from 'lucide-react'
 import { useReactFlow } from '@xyflow/react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
@@ -20,8 +20,6 @@ export function CanvasToolbar({ loading, error }: CanvasToolbarProps) {
   const signOut = useAuthStore((state) => state.signOut)
   const nodes = useNodeStore((state) => state.nodes)
   const createNode = useNodeStore((state) => state.createNode)
-  const focusedNodeId = useUIStore((state) => state.focusedNodeId)
-  const exitFocusMode = useUIStore((state) => state.exitFocusMode)
   const requestTitleFocus = useUIStore((state) => state.requestTitleFocus)
   const visibleIds = useFilter()
 
@@ -49,12 +47,6 @@ export function CanvasToolbar({ loading, error }: CanvasToolbarProps) {
         <Maximize2 className="mr-2 h-3.5 w-3.5" />
         Fit
       </Button>
-      {focusedNodeId && (
-        <Button size="sm" variant="outline" onClick={exitFocusMode}>
-          <Minimize2 className="mr-2 h-3.5 w-3.5" />
-          Exit focus
-        </Button>
-      )}
       <Button size="sm" onClick={addTopLevelNode}>
         <Plus className="mr-2 h-3.5 w-3.5" />
         Add

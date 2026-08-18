@@ -1,8 +1,6 @@
-import { memo, type MouseEvent } from 'react'
+import { memo } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
-import { Focus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { useUIStore } from '@/lib/store/useUIStore'
 import { cn, formatDate } from '@/lib/utils'
 import type { FlowNode } from '@/types'
@@ -27,7 +25,6 @@ const URGENCY_STYLES = {
 
 export const CustomNode = memo(({ id, data }: NodeProps<FlowNode>) => {
   const openPanel = useUIStore((state) => state.openPanel)
-  const enterFocusMode = useUIStore((state) => state.enterFocusMode)
   const urgencyStyle = URGENCY_STYLES[data.urgency]
   const taskSummary =
     data.totalSubtaskCount > 0
@@ -35,13 +32,6 @@ export const CustomNode = memo(({ id, data }: NodeProps<FlowNode>) => {
       : data.completed
         ? 'Done'
         : 'Open'
-
-  function handleFocusClick(event: MouseEvent<HTMLButtonElement>) {
-    event.stopPropagation()
-    if (window.confirm(`Focus on "${data.title}" and its descendants?`)) {
-      enterFocusMode(id)
-    }
-  }
 
   return (
     <div
@@ -111,17 +101,6 @@ export const CustomNode = memo(({ id, data }: NodeProps<FlowNode>) => {
           </div>
         </div>
       </button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label={`Focus on ${data.title}`}
-        title="Focus on this branch"
-        className="nodrag absolute right-3 top-3 h-6 w-6 rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
-        onClick={handleFocusClick}
-      >
-        <Focus className="h-3.5 w-3.5" />
-      </Button>
     </div>
   )
 })

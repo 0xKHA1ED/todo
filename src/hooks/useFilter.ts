@@ -6,16 +6,10 @@ import { useUIStore } from '@/lib/store/useUIStore'
 
 export function useFilter(): Set<string> {
   const nodes = useNodeStore((state) => state.nodes)
-  const getSubtreeIds = useNodeStore((state) => state.getSubtreeIds)
-  const focusedNodeId = useUIStore((state) => state.focusedNodeId)
   const activeUrgencyFilter = useUIStore((state) => state.activeUrgencyFilter)
   const activeTagFilters = useUIStore((state) => state.activeTagFilters)
 
   return useMemo(() => {
-    if (focusedNodeId && nodes.some((node) => node.id === focusedNodeId)) {
-      return new Set(getSubtreeIds(focusedNodeId))
-    }
-
     if (activeUrgencyFilter.length === 0 && activeTagFilters.length === 0) {
       return new Set(nodes.map((node) => node.id))
     }
@@ -36,5 +30,5 @@ export function useFilter(): Set<string> {
 
     matching.forEach((node) => includeWithAncestors(node.id))
     return visibleIds
-  }, [activeTagFilters, activeUrgencyFilter, focusedNodeId, getSubtreeIds, nodes])
+  }, [activeTagFilters, activeUrgencyFilter, nodes])
 }

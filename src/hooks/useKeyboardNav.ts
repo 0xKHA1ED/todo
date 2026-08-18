@@ -52,9 +52,7 @@ export function useKeyboardNav() {
       try {
         if (event.key === 'Tab') {
           event.preventDefault()
-          if (!selected) return
-          const isArea = nodes.some((node) => node.parent_id === selected.id)
-          if (!isArea) return
+          if (!selected || selected.parent_id === null) return
           const child = await createNode({ parent_id: selected.id, title: 'New Task' })
           enterPlace(selected.id)
           requestTitleFocus(child.id)

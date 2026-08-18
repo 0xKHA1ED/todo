@@ -72,9 +72,7 @@ export function MindmapCanvas() {
   const handleNodeDoubleClick = useCallback(
     (event: MouseEvent, node: FlowNode) => {
       event.stopPropagation()
-      if (node.data.insideCount > 0) {
-        enterPlace(node.id)
-      }
+      enterPlace(node.id)
     },
     [enterPlace],
   )

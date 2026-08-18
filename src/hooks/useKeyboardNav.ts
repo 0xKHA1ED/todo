@@ -21,6 +21,7 @@ function shouldIgnoreShortcut(event: KeyboardEvent) {
 export function useKeyboardNav() {
   const { toast } = useToast()
   const selectedNodeId = useUIStore((state) => state.selectedNodeId)
+  const currentPlaceId = useUIStore((state) => state.currentPlaceId)
   const closePanel = useUIStore((state) => state.closePanel)
   const toggleCommandPalette = useUIStore((state) => state.toggleCommandPalette)
   const requestTitleFocus = useUIStore((state) => state.requestTitleFocus)
@@ -45,28 +46,40 @@ export function useKeyboardNav() {
       if (shouldIgnoreShortcut(event)) return
 
       const selected = nodes.find((node) => node.id === selectedNodeId)
-
-      if (!selected) return
+      const enterPlace = useUIStore.getState().enterPlace
+      const openPanel = useUIStore.getState().openPanel
 
       try {
         if (event.key === 'Tab') {
           event.preventDefault()
+          if (!selected) return
+          const isArea = nodes.some((node) => node.parent_id === selected.id)
+          if (!isArea) return
           const child = await createNode({ parent_id: selected.id, title: 'New Task' })
+          enterPlace(selected.id)
           requestTitleFocus(child.id)
+          return
         }
 
         if (event.key === 'Enter') {
           event.preventDefault()
-          const parentId = selected.parent_id ?? selected.id
-          const sibling = await createNode({ parent_id: parentId, title: 'New Task' })
-          requestTitleFocus(sibling.id)
+          if (!selected) return
+          const isArea = nodes.some((node) => node.parent_id === selected.id)
+          if (isArea) enterPlace(selected.id)
+          else openPanel(selected.id)
+          return
         }
 
-        if ((event.key === 'Delete' || event.key === 'Backspace') && selected.parent_id !== null) {
+        if (!selected) return
+
+        if (event.key === 'Delete' && selected.parent_id !== null) {
           event.preventDefault()
           if (window.confirm(`Delete "${selected.title}" and all of its children?`)) {
+            const parentId = selected.parent_id
+            const standing = useUIStore.getState().currentPlaceId
             await deleteNode(selected.id)
             closePanel()
+            if (standing === selected.id) enterPlace(parentId)
           }
         }
 
@@ -85,5 +98,15 @@ export function useKeyboardNav() {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [closePanel, createNode, deleteNode, nodes, requestTitleFocus, selectedNodeId, toast, toggleCommandPalette])
+  }, [
+    closePanel,
+    createNode,
+    currentPlaceId,
+    deleteNode,
+    nodes,
+    requestTitleFocus,
+    selectedNodeId,
+    toast,
+    toggleCommandPalette,
+  ])
 }

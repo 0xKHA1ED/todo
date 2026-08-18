@@ -83,6 +83,9 @@ export async function seedNodeTree(
     parentTitle?: string
     urgency?: 'low' | 'normal' | 'high'
     tags?: string[]
+    date?: string | null
+    completed?: boolean
+    last_visited_at?: string | null
   }>,
 ) {
   const { supabase, userId } = await createAuthenticatedE2EClient()
@@ -112,6 +115,9 @@ export async function seedNodeTree(
         tags: node.tags ?? [],
         description: ROOT_DESCRIPTION,
         sort_order: index,
+        ...(node.date !== undefined ? { date: node.date } : {}),
+        ...(node.completed !== undefined ? { completed: node.completed } : {}),
+        ...(node.last_visited_at !== undefined ? { last_visited_at: node.last_visited_at } : {}),
       })
       .select('id')
       .single()

@@ -5,7 +5,9 @@ test.beforeEach(requireE2ECredentials)
 
 test('panel edits title, urgency, date, tags, and markdown content', async ({ page }) => {
   await signIn(page)
-  await selectFirstNode(page)
+  await expect(page.getByText('Add a project')).toBeVisible()
+  await page.getByRole('button', { name: 'Add' }).click()
+  await expect(page.getByLabel('Title')).toBeFocused()
 
   const title = `Edited ${Date.now()}`
   await page.getByLabel('Title').fill(title)

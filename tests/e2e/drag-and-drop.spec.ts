@@ -6,16 +6,19 @@ test.beforeEach(requireE2ECredentials)
 test('dragging a non-root node over another node keeps the canvas stable', async ({ page }) => {
   await signIn(page)
   const nodes = page.locator('.react-flow__node')
+  await expect(nodes).toHaveCount(0)
+  await expect(page.getByText('Add a project')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Add' }).click()
+  await expect(nodes).toHaveCount(1, { timeout: 15_000 })
+  await closePanel(page)
+
   await page.getByRole('button', { name: 'Add' }).click()
   await expect(nodes).toHaveCount(2, { timeout: 15_000 })
   await closePanel(page)
 
-  await page.getByRole('button', { name: 'Add' }).click()
-  await expect(nodes).toHaveCount(3, { timeout: 15_000 })
-  await closePanel(page)
-
-  const source = nodes.nth(1)
-  const target = nodes.nth(2)
+  const source = nodes.nth(0)
+  const target = nodes.nth(1)
   const sourceBox = await source.boundingBox()
   const targetBox = await target.boundingBox()
   test.skip(!sourceBox || !targetBox, 'Node boxes were unavailable.')

@@ -9,7 +9,7 @@ test('unauthenticated users land on login or configuration guidance', async ({ p
 test('login with valid credentials redirects to map', async ({ page }) => {
   test.skip(!hasE2ECredentials, 'Supabase E2E credentials are not configured.')
   await signIn(page)
-  await expect(page.locator('.react-flow')).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toBeVisible()
 })
 
 test('login with invalid credentials shows an error', async ({ page }) => {

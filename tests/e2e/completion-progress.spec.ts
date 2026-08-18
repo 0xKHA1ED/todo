@@ -1,43 +1,28 @@
 import { expect, test } from '@playwright/test'
-import { closePanel, fitCanvas, requireE2ECredentials, selectNodeByTitle, signIn } from './helpers'
+import { closePanel, requireE2ECredentials, signIn } from './helpers'
 
 test.beforeEach(requireE2ECredentials)
 
-test('completed tasks toggle and parent cards show subtree progress', async ({ page }) => {
+test('completed children hide until Show done reveals them', async ({ page }) => {
   await signIn(page)
-  await selectNodeByTitle(page, 'Main')
+  await expect(page.getByText('Add a project')).toBeVisible()
+  await page.getByRole('button', { name: 'Add' }).click()
+  await expect(page.getByLabel('Title')).toBeFocused()
 
-  const titleInput = page.getByLabel('Title')
-  const panelTitle = page.getByRole('heading', { level: 2 })
-
-  await page.keyboard.press('Tab')
-  await expect(panelTitle).toHaveText('New Task')
-  await expect(titleInput).toBeFocused()
-  await expect(page.locator('.react-flow__node')).toHaveCount(2, { timeout: 15_000 })
-  await titleInput.fill('Completed child')
-  await page.keyboard.press('Enter')
+  const title = `Completed ${Date.now()}`
+  await page.getByLabel('Title').fill(title)
+  await page.getByLabel('Title').blur()
   await page.getByRole('button', { name: 'Mark Completed' }).click()
   await expect(page.getByRole('button', { name: 'Mark Uncompleted' })).toBeVisible()
   await closePanel(page)
 
-  await selectNodeByTitle(page, 'Main')
-  await page.keyboard.press('Tab')
-  await expect(panelTitle).toHaveText('New Task')
-  await expect(titleInput).toBeFocused()
-  await expect(page.locator('.react-flow__node')).toHaveCount(3, { timeout: 15_000 })
-  await titleInput.fill('Open child')
-  await page.keyboard.press('Enter')
-  await closePanel(page)
+  await expect(page.locator('.react-flow__node', { hasText: title })).toHaveCount(0)
 
-  await fitCanvas(page)
-  const rootNode = page.locator('.react-flow__node', { hasText: 'Main' }).first()
-  await expect(rootNode).toBeVisible()
-  await expect(rootNode).toContainText('50%')
+  const showDone = page.getByRole('button', { name: 'Show done' })
+  await showDone.click()
+  await expect(showDone).toHaveAttribute('aria-pressed', 'true')
 
-  await selectNodeByTitle(page, 'Completed child')
-  await page.getByRole('button', { name: 'Mark Uncompleted' }).click()
-  await closePanel(page)
-
-  await fitCanvas(page)
-  await expect(rootNode).toContainText('0%')
+  const doneNode = page.locator('.react-flow__node', { hasText: title })
+  await expect(doneNode).toBeVisible()
+  await expect(doneNode.locator('.mindmap-node-title')).toHaveClass(/line-through|truncate/)
 })

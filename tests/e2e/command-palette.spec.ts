@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test'
-import { requireE2ECredentials, selectFirstNode, signIn } from './helpers'
+import { requireE2ECredentials, signIn } from './helpers'
 
 test.beforeEach(requireE2ECredentials)
 
 test('ctrl+k searches nodes and opens the selected result', async ({ page }) => {
   await signIn(page)
-  await selectFirstNode(page)
+  await expect(page.getByText('Add a project')).toBeVisible()
+  await page.getByRole('button', { name: 'Add' }).click()
+  await expect(page.getByLabel('Title')).toBeFocused()
   const title = `Palette ${Date.now()}`
   await page.getByLabel('Title').fill(title)
   await page.getByLabel('Title').blur()

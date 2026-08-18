@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pickForgotten, rankNow, STALE_MS } from './placeModel'
+import { pickForgotten, rankNow, STALE_MS, visibleChildren } from './placeModel'
 import type { NodeRecord, Urgency } from '@/types'
 
 function node(partial: Partial<NodeRecord> & Pick<NodeRecord, 'id' | 'title'>): NodeRecord {
@@ -159,5 +159,56 @@ describe('pickForgotten', () => {
       }),
     ]
     expect(pickForgotten(nodes, 'home', now, new Set())).toBeNull()
+  })
+})
+
+describe('visibleChildren', () => {
+  const today = new Date(2026, 7, 18)
+  const now = new Date('2026-08-18T12:00:00.000Z')
+
+  it('assigns loud, medium, area, and compact densities', () => {
+    const nodes = [
+      home,
+      node({ id: 'faucet', title: 'Fix faucet', date: '2026-08-18' }),
+      node({ id: 'plumber', title: 'Call plumber', date: '2026-08-21' }),
+      node({ id: 'paint', title: 'Paint' }),
+      node({ id: 'marketing', title: 'Marketing' }),
+      node({ id: 'copy', title: 'Copy', parent_id: 'marketing' }),
+    ]
+    const views = visibleChildren(nodes, 'home', false, today, now)
+    const byTitle = Object.fromEntries(views.map((view) => [view.node.title, view.density]))
+    expect(byTitle['Fix faucet']).toBe('loud')
+    expect(byTitle['Call plumber']).toBe('medium')
+    expect(byTitle['Paint']).toBe('compact')
+    expect(byTitle.Marketing).toBe('area')
+    expect(views.find((view) => view.node.title === 'Marketing')?.insideCount).toBe(1)
+  })
+
+  it('treats a high-urgency undated leaf as medium', () => {
+    const highNodes = [home, node({ id: 'h', title: 'Urgent idea', urgency: 'high' })]
+    const views = visibleChildren(highNodes, 'home', false, today, now)
+    expect(views[0]?.density).toBe('medium')
+  })
+
+  it('makes an area loud when a descendant is due today', () => {
+    const nodes = [
+      home,
+      node({ id: 'fin', title: 'Finances' }),
+      node({ id: 'bill', title: 'Invoice', parent_id: 'fin', date: '2026-08-18' }),
+    ]
+    const views = visibleChildren(nodes, 'home', false, today, now)
+    expect(views[0]?.density).toBe('loud')
+    expect(views[0]?.dueCount).toBe(1)
+  })
+
+  it('hides completed leaves and fully-completed areas unless showDone', () => {
+    const nodes = [
+      home,
+      node({ id: 'done', title: 'Done', completed: true }),
+      node({ id: 'area', title: 'Old' }),
+      node({ id: 'child', title: 'Old child', parent_id: 'area', completed: true }),
+    ]
+    expect(visibleChildren(nodes, 'home', false, today, now).map((view) => view.node.title)).toEqual([])
+    expect(visibleChildren(nodes, 'home', true, today, now).map((view) => view.node.title)).toEqual(['Done', 'Old'])
   })
 })

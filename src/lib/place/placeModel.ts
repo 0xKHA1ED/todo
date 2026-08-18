@@ -1,4 +1,4 @@
-import type { NodeRecord } from '@/types'
+import type { NodeDensity, NodeRecord } from '@/types'
 
 export function getDirectChildren(nodes: NodeRecord[], placeId: string): NodeRecord[] {
   return nodes.filter((node) => node.parent_id === placeId)
@@ -110,4 +110,89 @@ export function pickForgotten(
     (node) => !isArea(nodes, node.id) && isStale(node, now) && !nowItemIds.has(node.id),
   )
   return oldest(staleLeaves)
+}
+
+export type PlaceChildView = {
+  node: NodeRecord
+  density: NodeDensity
+  insideCount: number
+  dueCount: number
+  staleDays: number | null
+}
+
+function leafDensity(node: NodeRecord, today: Date): NodeDensity {
+  const until = daysUntil(node.date, today)
+  if (until !== null && until <= 0) return 'loud'
+  if ((until !== null && until <= 7) || node.urgency === 'high') return 'medium'
+  return 'compact'
+}
+
+function areaDensity(descendants: NodeRecord[], today: Date): NodeDensity {
+  const open = descendants.filter((node) => !node.completed)
+  if (open.some((node) => {
+    const until = daysUntil(node.date, today)
+    return until !== null && until <= 0
+  })) {
+    return 'loud'
+  }
+  if (open.some((node) => {
+    const until = daysUntil(node.date, today)
+    return (until !== null && until <= 7) || node.urgency === 'high'
+  })) {
+    return 'medium'
+  }
+  return 'area'
+}
+
+function childStaleDays(node: NodeRecord, now: Date): number | null {
+  if (!isStale(node, now)) return null
+  if (node.last_visited_at === null) return -1
+  return Math.floor((now.getTime() - Date.parse(node.last_visited_at)) / 86_400_000)
+}
+
+function childDueCount(descendants: NodeRecord[], today: Date): number {
+  return descendants.filter((node) => {
+    if (node.completed) return false
+    const until = daysUntil(node.date, today)
+    return until !== null && until <= 7
+  }).length
+}
+
+export function visibleChildren(
+  nodes: NodeRecord[],
+  placeId: string,
+  showDone: boolean,
+  today: Date,
+  now: Date,
+): PlaceChildView[] {
+  const views: PlaceChildView[] = []
+
+  for (const child of getDirectChildren(nodes, placeId)) {
+    const descendants = subtreeDescendants(nodes, child.id)
+    const area = isArea(nodes, child.id)
+
+    if (!showDone) {
+      if (child.completed) continue
+      if (area && descendants.every((node) => node.completed)) continue
+    }
+
+    let density: NodeDensity
+    if (child.completed) {
+      density = 'compact'
+    } else if (area) {
+      density = areaDensity(descendants, today)
+    } else {
+      density = leafDensity(child, today)
+    }
+
+    views.push({
+      node: child,
+      density,
+      insideCount: descendants.length,
+      dueCount: childDueCount(descendants, today),
+      staleDays: childStaleDays(child, now),
+    })
+  }
+
+  return views
 }

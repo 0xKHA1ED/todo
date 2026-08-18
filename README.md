@@ -1,20 +1,21 @@
 # Mindmap Tasks
 
-A personal productivity app that combines a hierarchical mindmap with rich per-node documentation. Built with Next.js (static export), Supabase, React Flow, TipTap, and Shadcn UI. Deploys to GitHub Pages.
+A personal productivity app that treats life as nested places. You always stand in one place (Home, a project, or an area) and see Now, Forgotten, and hybrid-weighted direct children — never the whole-life forest. Built with Next.js (static export), Supabase, React Flow, TipTap, and Shadcn UI. Deploys to GitHub Pages.
 
 ---
 
 ## Features
 
-- Infinite node nesting with parent/child relationships
-- Urgency levels (Low / Normal / High) color-coded on the canvas
-- Optional due-date badge and multi-tag support per node
+- **Place UI** — Opening the app always stands you at **Home** (the hidden root). Nested descendants stay packed inside child area cards until you enter that place.
+- **Now** — Up to **5** urgent tasks from the current place’s subtree (overdue, due today, next 7 days, then high-urgency undated). Extra matches show as a quiet “N more” count.
+- **Forgotten** — Exactly one stale child of the current place. Prefers an area whose `last_visited_at` is null or older than **14 days**; otherwise the oldest stale leaf not already in Now. Hidden when nothing is stale.
+- **Hybrid densities** — Direct children only, weighted Loud / Medium / Area / Compact. Progress, tags, and full urgency live in the detail panel, not on every card.
+- **Add** always creates a child of the current place. **Show done** reveals completed nodes (compact, struck through).
 - TipTap WYSIWYG rich-text description per node (Notion-style)
-- Slide-out detail panel without leaving the canvas
-- Keyboard-first creation: **Tab** = new child, **Enter** = new sibling
-- Drag-and-drop re-parenting (entire subtree moves with the node)
-- Visual filtering that hides non-matching nodes and recalculates layout
-- Command palette (**Ctrl+K**) — searches titles and markdown content, jumps viewport
+- Slide-out detail panel without leaving the place
+- Keyboard: **Tab** on a selected non-root node creates a child and enters that place; **Enter** enters an area (has children) or opens the panel; **Delete** deletes (not Backspace)
+- Drag-and-drop re-parenting among visible children of the current place (entire subtree moves with the node)
+- Command palette (**Ctrl+K**) — searches titles and markdown content, then jumps to the hit’s **parent place** (not viewport pan)
 - Email/Password auth via Supabase Auth with Row-Level Security
 
 ---
@@ -30,7 +31,7 @@ A personal productivity app that combines a hierarchical mindmap with rich per-n
 | State | Zustand |
 | Editor | TipTap |
 | Backend / Auth | Supabase (PostgreSQL + Auth) |
-| Testing | Playwright |
+| Testing | Vitest + Playwright |
 | Deployment | GitHub Pages |
 
 ---
@@ -95,14 +96,13 @@ The app is available at `http://localhost:3000`.
 
 ### 2. Apply the database schema
 
-Open the **SQL Editor** in your Supabase dashboard and run the contents of [`supabase/migrations/001_initial_schema.sql`](supabase/migrations/001_initial_schema.sql).
+Open the **SQL Editor** in your Supabase dashboard and run the migrations **in order**:
 
-This migration: 
+1. [`supabase/migrations/001_initial_schema.sql`](supabase/migrations/001_initial_schema.sql) — creates the `nodes` table with the core columns (`id`, `user_id`, `parent_id`, `title`, `urgency`, `date`, `tags`, `description`, `position_x`, `position_y`, `sort_order`, `created_at`, `updated_at`), a GIN index on `tags`, an `updated_at` trigger, and **Row-Level Security (RLS)** so users can only read and write their own nodes.
+2. [`supabase/migrations/002_add_node_completion.sql`](supabase/migrations/002_add_node_completion.sql) — adds `nodes.completed`.
+3. [`supabase/migrations/003_add_last_visited_at.sql`](supabase/migrations/003_add_last_visited_at.sql) — adds `nodes.last_visited_at` (nullable timestamptz). Existing rows stay null (never visited) and are eligible for Forgotten. Standing in a place sets `last_visited_at` on that node and its ancestors.
 
-- Creates the `nodes` table with all required columns (`id`, `user_id`, `parent_id`, `title`, `urgency`, `date`, `tags`, `description`, `position_x`, `position_y`, `sort_order`, `created_at`, `updated_at`).
-- Adds a GIN index on `tags` for fast filtering.
-- Attaches an `updated_at` trigger that auto-updates on every row change.
-- Enables **Row-Level Security (RLS)** and creates four policies so that users can only read and write their own nodes.
+If the project already has `001` applied, still run `002` and `003`. Place UI requires `003`.
 
 ### 3. Enable Email/Password auth
 
@@ -152,7 +152,7 @@ Push to the `main` branch (or trigger the workflow manually from **Actions → D
 The workflow defined in [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
 
 1. Installs dependencies and Playwright browsers.
-2. Runs `next lint` and `next build`.
+2. Runs `next lint`, then `npm test` (Vitest), then `next build`.
 3. Executes the full Playwright E2E suite.
 4. On success, uploads the `out/` directory and deploys it to GitHub Pages.
 
@@ -178,6 +178,22 @@ https://<your-org>.github.io/todo/
 
 ## Running Tests
 
+### Unit tests (Vitest)
+
+Place-model unit tests (Now, Forgotten, densities, visit targets):
+
+```bash
+npm test
+```
+
+Watch mode:
+
+```bash
+npm run test:watch
+```
+
+### End-to-end (Playwright)
+
 Install Playwright browsers once:
 
 ```bash
@@ -196,7 +212,7 @@ Open the Playwright UI for interactive debugging:
 npm run test:e2e:ui
 ```
 
-Tests require the following environment variables to be set (Supabase URL/key + a valid test account):
+E2E tests require the following environment variables to be set (Supabase URL/key + a valid test account):
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=...
@@ -213,23 +229,24 @@ E2E_USER_PASSWORD=...
 src/
 ├── app/                  # Next.js App Router pages
 │   ├── login/            # Email/password login page
-│   └── map/              # Main mindmap canvas (auth-protected)
+│   └── map/              # Place screen (auth-protected)
 ├── components/
 │   ├── auth/             # AuthGuard, LoginForm
-│   ├── canvas/           # React Flow canvas, custom node/edge components
-│   ├── filters/          # Filter bar
+│   ├── canvas/           # Place-scoped React Flow, custom node/edge, toolbar
 │   ├── palette/          # Command palette (Ctrl+K)
 │   ├── panel/            # Slide-out detail panel, Markdown editor
+│   ├── place/            # PlaceScreen, breadcrumb, Now, Forgotten
 │   └── ui/               # Shadcn UI primitives
-├── hooks/                # useCommandSearch, useFilter, useKeyboardNav
+├── hooks/                # useCommandSearch, useKeyboardNav
 ├── lib/
 │   ├── editor/           # TipTap extensions
 │   ├── flow/             # Dagre layout engine helpers
+│   ├── place/            # Now, Forgotten, density, visit targets
 │   ├── store/            # Zustand stores (auth, nodes, UI)
 │   └── supabase/         # Supabase client + CRUD queries
 └── types/                # Shared TypeScript types
 supabase/
-├── migrations/           # SQL migration files
+├── migrations/           # SQL migration files (001, 002, 003)
 └── seed.sql              # Notes on seeding
 tests/
 └── e2e/                  # Playwright test specs

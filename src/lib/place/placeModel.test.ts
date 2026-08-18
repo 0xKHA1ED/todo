@@ -123,4 +123,41 @@ describe('pickForgotten', () => {
     ]
     expect(pickForgotten(nodes, 'home', now, new Set())?.title).toBe('Health')
   })
+
+  it('skips completed children', () => {
+    const nodes = [
+      home,
+      node({
+        id: 'done-area',
+        title: 'Done area',
+        completed: true,
+        last_visited_at: null,
+      }),
+      node({ id: 'child', title: 'Child', parent_id: 'done-area' }),
+      node({
+        id: 'stale-leaf',
+        title: 'Forgotten leaf',
+        last_visited_at: new Date(now.getTime() - STALE_MS - 1000).toISOString(),
+      }),
+    ]
+    expect(pickForgotten(nodes, 'home', now, new Set())?.title).toBe('Forgotten leaf')
+  })
+
+  it('only considers direct children, not nested descendants', () => {
+    const nodes = [
+      home,
+      node({
+        id: 'fresh-area',
+        title: 'Fresh area',
+        last_visited_at: now.toISOString(),
+      }),
+      node({
+        id: 'nested',
+        title: 'Nested stale',
+        parent_id: 'fresh-area',
+        last_visited_at: null,
+      }),
+    ]
+    expect(pickForgotten(nodes, 'home', now, new Set())).toBeNull()
+  })
 })

@@ -1,7 +1,6 @@
 'use client'
 
 import { create } from 'zustand'
-import type { Urgency } from '@/types'
 
 interface UIStore {
   selectedNodeId: string | null
@@ -9,8 +8,6 @@ interface UIStore {
   isCommandPaletteOpen: boolean
   currentPlaceId: string | null
   showDone: boolean
-  activeUrgencyFilter: Urgency[]
-  activeTagFilters: string[]
   titleFocusRequest: string | null
   selectNode: (id: string | null) => void
   openPanel: (id: string) => void
@@ -19,9 +16,6 @@ interface UIStore {
   enterPlace: (id: string) => void
   resetPlace: () => void
   setShowDone: (show: boolean) => void
-  setUrgencyFilter: (urgencies: Urgency[]) => void
-  setTagFilter: (tags: string[]) => void
-  clearFilters: () => void
   requestTitleFocus: (id: string) => void
   clearTitleFocusRequest: () => void
 }
@@ -32,8 +26,6 @@ export const useUIStore = create<UIStore>((set) => ({
   isCommandPaletteOpen: false,
   currentPlaceId: null,
   showDone: false,
-  activeUrgencyFilter: [],
-  activeTagFilters: [],
   titleFocusRequest: null,
   selectNode: (id) => set({ selectedNodeId: id }),
   openPanel: (id) => set({ selectedNodeId: id, isPanelOpen: true }),
@@ -48,9 +40,6 @@ export const useUIStore = create<UIStore>((set) => ({
     })),
   resetPlace: () => set({ currentPlaceId: null, showDone: false, selectedNodeId: null, isPanelOpen: false }),
   setShowDone: (showDone) => set({ showDone }),
-  setUrgencyFilter: (urgencies) => set({ activeUrgencyFilter: urgencies }),
-  setTagFilter: (tags) => set({ activeTagFilters: tags }),
-  clearFilters: () => set({ activeUrgencyFilter: [], activeTagFilters: [] }),
   requestTitleFocus: (id) => set({ titleFocusRequest: id, selectedNodeId: id, isPanelOpen: true }),
   clearTitleFocusRequest: () => set({ titleFocusRequest: null }),
 }))

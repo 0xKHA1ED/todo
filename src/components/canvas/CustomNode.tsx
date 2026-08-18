@@ -2,7 +2,6 @@ import { memo } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { DENSITY_SIZE } from '@/lib/flow/treeLayout'
 import { daysUntil } from '@/lib/place/placeModel'
-import { useUIStore } from '@/lib/store/useUIStore'
 import { cn, formatDate } from '@/lib/utils'
 import type { FlowNode, NodeData } from '@/types'
 
@@ -22,8 +21,7 @@ function areaHints(data: NodeData): string {
   return parts.join(' · ')
 }
 
-export const CustomNode = memo(({ id, data }: NodeProps<FlowNode>) => {
-  const openPanel = useUIStore((state) => state.openPanel)
+export const CustomNode = memo(({ data }: NodeProps<FlowNode>) => {
   const size = DENSITY_SIZE[data.density]
   const isArea = data.insideCount > 0
   const today = new Date()
@@ -41,49 +39,28 @@ export const CustomNode = memo(({ id, data }: NodeProps<FlowNode>) => {
       <Handle type="target" position={Position.Left} className="opacity-0" />
       <Handle type="source" position={Position.Right} className="opacity-0" />
 
-      {isArea ? (
-        <div className="flex h-full w-full flex-col justify-center px-3 py-2">
-          <p
-            className={cn(
-              'mindmap-node-title text-[15px] font-semibold leading-snug text-card-foreground',
-              data.completed && 'text-muted-foreground line-through',
-              data.density === 'compact' && 'truncate',
-            )}
-          >
-            {data.title}
-          </p>
-          {data.density !== 'compact' && (
-            <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">{areaHints(data)}</p>
+      <div className="flex h-full w-full flex-col justify-center px-3 py-2">
+        <p
+          className={cn(
+            'mindmap-node-title text-[15px] font-semibold leading-snug text-card-foreground',
+            data.completed && 'text-muted-foreground line-through',
+            data.density === 'compact' && 'truncate',
           )}
-        </div>
-      ) : (
-        <button
-          type="button"
-          aria-label={`Open ${data.title}`}
-          onClick={() => openPanel(id)}
-          className="block h-full w-full cursor-pointer text-left focus-visible:outline-none"
         >
-          <div className="flex h-full flex-col justify-center px-3 py-2">
-            <p
-              className={cn(
-                'mindmap-node-title text-[15px] font-semibold leading-snug text-card-foreground',
-                data.completed && 'text-muted-foreground line-through',
-                data.density === 'compact' && 'truncate',
-              )}
-            >
-              {data.title}
-            </p>
-            {data.density === 'loud' && dueLabel && (
-              <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-rose-600">{dueLabel}</p>
-            )}
-            {data.density === 'medium' && (
-              <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">
-                {data.date ? formatDate(data.date) : 'high'}
-              </p>
-            )}
-          </div>
-        </button>
-      )}
+          {data.title}
+        </p>
+        {isArea && data.density !== 'compact' && (
+          <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">{areaHints(data)}</p>
+        )}
+        {!isArea && data.density === 'loud' && dueLabel && (
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-rose-600">{dueLabel}</p>
+        )}
+        {!isArea && data.density === 'medium' && (
+          <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">
+            {data.date ? formatDate(data.date) : 'high'}
+          </p>
+        )}
+      </div>
     </div>
   )
 })

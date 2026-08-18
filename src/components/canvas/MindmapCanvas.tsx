@@ -2,19 +2,14 @@
 
 import { useCallback, useEffect, useMemo, type MouseEvent } from 'react'
 import {
-  Background,
-  BackgroundVariant,
   Controls,
-  MiniMap,
   ReactFlow,
   useEdgesState,
   useNodesState,
   useReactFlow,
-  type Node,
-  type NodeTypes,
   type EdgeTypes,
+  type NodeTypes,
 } from '@xyflow/react'
-import { motion } from 'framer-motion'
 import { buildFlowGraph } from '@/lib/flow/treeLayout'
 import { useNodeStore } from '@/lib/store/useNodeStore'
 import { useUIStore } from '@/lib/store/useUIStore'
@@ -31,27 +26,21 @@ function isDescendant(nodes: NodeRecord[], ancestorId: string, candidateId: stri
   return children.some((child) => child.id === candidateId || isDescendant(nodes, child.id, candidateId))
 }
 
-function minimapColor(node: Node) {
-  if (node.data.completed) return '#94a3b8'
-  const urgency = node.data.urgency
-  if (urgency === 'high') return '#e11d48'
-  if (urgency === 'low') return '#2f9e44'
-  return '#d97706'
-}
-
 export function MindmapCanvas() {
   const { toast } = useToast()
   const dbNodes = useNodeStore((state) => state.nodes)
-  const loading = useNodeStore((state) => state.loading)
   const reparentNode = useNodeStore((state) => state.reparentNode)
   const updateNode = useNodeStore((state) => state.updateNode)
   const openPanel = useUIStore((state) => state.openPanel)
+  const selectNode = useUIStore((state) => state.selectNode)
+  const enterPlace = useUIStore((state) => state.enterPlace)
   const currentPlaceId = useUIStore((state) => state.currentPlaceId)
   const showDone = useUIStore((state) => state.showDone)
   const root = dbNodes.find((node) => node.parent_id === null)
   const placeId = currentPlaceId ?? root?.id ?? ''
   const flowGraph = useMemo(() => buildFlowGraph(dbNodes, placeId, showDone), [dbNodes, placeId, showDone])
-  const visibleFlowIds = useMemo(() => new Set(flowGraph.nodes.map((node) => node.id)), [flowGraph.nodes])
+  const visibleChildIds = useMemo(() => new Set(flowGraph.nodes.map((node) => node.id)), [flowGraph.nodes])
+  const visibleNodeKey = useMemo(() => flowGraph.nodes.map((node) => node.id).join(','), [flowGraph.nodes])
   const [nodes, setNodes, onNodesChange] = useNodesState(flowGraph.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(flowGraph.edges)
   const { getIntersectingNodes, fitView } = useReactFlow()
@@ -62,12 +51,32 @@ export function MindmapCanvas() {
   }, [flowGraph.edges, flowGraph.nodes, setEdges, setNodes])
 
   useEffect(() => {
-    if (flowGraph.nodes.length === 0) return
+    if (!visibleNodeKey) return
     const timeout = window.setTimeout(() => {
       fitView({ padding: 0.2, duration: 400 })
     }, 50)
     return () => window.clearTimeout(timeout)
-  }, [fitView, flowGraph.nodes.length])
+  }, [fitView, visibleNodeKey])
+
+  const handleNodeClick = useCallback(
+    (_event: MouseEvent, node: FlowNode) => {
+      if (node.data.insideCount > 0) {
+        selectNode(node.id)
+        return
+      }
+      openPanel(node.id)
+    },
+    [openPanel, selectNode],
+  )
+
+  const handleNodeDoubleClick = useCallback(
+    (_event: MouseEvent, node: FlowNode) => {
+      if (node.data.insideCount > 0) {
+        enterPlace(node.id)
+      }
+    },
+    [enterPlace],
+  )
 
   const handleNodeDragStop = useCallback(
     async (_event: MouseEvent, draggedNode: FlowNode) => {
@@ -84,9 +93,12 @@ export function MindmapCanvas() {
 
         const target = getIntersectingNodes(draggedNode)
           .filter((node) => node.id !== draggedNode.id)
-          .find((node) => visibleFlowIds.has(node.id))
+          .find((node) => visibleChildIds.has(node.id))
 
         if (!target || target.id === source.parent_id) return
+
+        const targetRecord = dbNodes.find((node) => node.id === target.id)
+        if (!targetRecord || targetRecord.parent_id === null) return
 
         if (isDescendant(dbNodes, source.id, target.id)) {
           toast({
@@ -106,7 +118,7 @@ export function MindmapCanvas() {
         })
       }
     },
-    [dbNodes, getIntersectingNodes, reparentNode, toast, updateNode, visibleFlowIds],
+    [dbNodes, getIntersectingNodes, reparentNode, toast, updateNode, visibleChildIds],
   )
 
   return (
@@ -118,7 +130,8 @@ export function MindmapCanvas() {
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onNodeClick={(_event, node) => openPanel(node.id)}
+        onNodeClick={handleNodeClick}
+        onNodeDoubleClick={handleNodeDoubleClick}
         onNodeDragStop={handleNodeDragStop}
         fitView
         minZoom={0.08}
@@ -128,29 +141,8 @@ export function MindmapCanvas() {
         className="mindmap-canvas"
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Lines} gap={32} size={1} color="hsl(var(--canvas-grid))" className="opacity-45" />
         <Controls className="!border-border !bg-card !text-foreground" />
-        <MiniMap
-          nodeColor={minimapColor}
-          nodeStrokeColor="#ffffff"
-          nodeBorderRadius={8}
-          maskColor="rgba(15, 23, 42, 0.08)"
-          pannable
-          zoomable
-          className="!border !border-border !bg-card/95 !shadow-lg"
-        />
       </ReactFlow>
-
-      {!loading && dbNodes.length > 0 && flowGraph.nodes.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-card/95 px-5 py-4 text-center shadow-lg"
-        >
-          <p className="font-medium">No nodes match the current filters.</p>
-          <p className="mt-1 text-sm text-muted-foreground">Clear filters to restore the full mindmap.</p>
-        </motion.div>
-      )}
     </div>
   )
 }

@@ -110,6 +110,18 @@ If the project already has `001` applied, still run `002` and `003`. Place UI re
 2. Ensure the **Email** provider is enabled.
 3. Under **Authentication → URL Configuration**, add your site URL (e.g. `https://<your-org>.github.io/todo`) to **Site URL** and the same URL to **Redirect URLs**.
 
+### Auth URLs and email login
+
+1. **Authentication → URL Configuration:** set **Site URL** to `http://localhost:3000` locally and `https://<org>.github.io/todo` in production.
+2. **Redirect URLs** must include:
+   - `http://localhost:3000/reset-password/**`
+   - `http://localhost:3000/auth/callback/**`
+   - `https://<org>.github.io/todo/reset-password/**`
+   - `https://<org>.github.io/todo/auth/callback/**`
+3. Enable **Email OTP** (**Authentication → Providers → Email**).
+4. Recovery and magic-link templates may include both the token (`{{ .Token }}`) and `{{ .ConfirmationURL }}`.
+5. Users can sign in with password, **Forgot password?**, or **Email me a code instead**. Signup remains email + password.
+
 ### 4. (Optional) Seed a test user
 
 The app automatically creates a root "Main" node the first time a user logs in. You can register directly from the login page — no manual seeding is required.

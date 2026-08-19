@@ -25,6 +25,7 @@ export function useCommandSearch(query: string): CommandSearchResult[] {
         id: node.id,
         title: node.title,
         descriptionPreview: getPlainTextFromTipTap(node.description).slice(0, 120),
+        tags: node.tags,
       }))
       .slice(0, 30)
   }, [nodes, query])

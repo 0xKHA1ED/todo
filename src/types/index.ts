@@ -56,4 +56,5 @@ export interface CommandSearchResult {
   id: string
   title: string
   descriptionPreview: string
+  tags: string[]
 }

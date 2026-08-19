@@ -45,7 +45,7 @@ export function CommandPalette() {
         <CommandEmpty>No matching nodes.</CommandEmpty>
         <CommandGroup heading="Nodes">
           {results.map((node) => (
-            <CommandItem key={node.id} value={`${node.title} ${node.descriptionPreview}`} onSelect={() => handleSelect(node.id)}>
+            <CommandItem key={node.id} value={`${node.title} ${node.descriptionPreview} ${node.tags.join(' ')}`} onSelect={() => handleSelect(node.id)}>
               <div className="min-w-0">
                 <p className="truncate font-medium">{node.title}</p>
                 {node.descriptionPreview && (

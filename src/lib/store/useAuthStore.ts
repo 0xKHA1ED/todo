@@ -2,7 +2,12 @@
 
 import type { Session, User } from '@supabase/supabase-js'
 import { create } from 'zustand'
+import { getClientAuthRedirectUrl } from '@/lib/auth/redirectUrl'
 import { getSupabaseClient, getSupabaseConfigError } from '@/lib/supabase/client'
+
+function isConfigOrRateLimit(error: { status?: number; message: string }) {
+  return error.status === 429 || error.message.toLowerCase().includes('not configured')
+}
 
 interface AuthStore {
   session: Session | null
@@ -13,6 +18,10 @@ interface AuthStore {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  requestPasswordReset: (email: string) => Promise<void>
+  updatePassword: (password: string) => Promise<void>
+  requestEmailCode: (email: string) => Promise<void>
+  verifyEmailCode: (email: string, token: string) => Promise<void>
   initializeAuth: () => void
 }
 
@@ -40,6 +49,38 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   async signOut() {
     const supabase = getSupabaseClient()
     const { error } = await supabase.auth.signOut()
+    if (error) throw error
+  },
+
+  async requestPasswordReset(email) {
+    const supabase = getSupabaseClient()
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: getClientAuthRedirectUrl('/reset-password'),
+    })
+    if (error && isConfigOrRateLimit(error)) throw error
+  },
+
+  async updatePassword(password) {
+    const supabase = getSupabaseClient()
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) throw error
+  },
+
+  async requestEmailCode(email) {
+    const supabase = getSupabaseClient()
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: getClientAuthRedirectUrl('/auth/callback'),
+      },
+    })
+    if (error && isConfigOrRateLimit(error)) throw error
+  },
+
+  async verifyEmailCode(email, token) {
+    const supabase = getSupabaseClient()
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
     if (error) throw error
   },
 

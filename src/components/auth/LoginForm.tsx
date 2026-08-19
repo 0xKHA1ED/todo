@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -93,6 +94,16 @@ export function LoginForm() {
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {mode === 'signin' ? 'Sign in' : 'Create account'}
           </Button>
+          {mode === 'signin' ? (
+            <>
+              <Button type="button" variant="ghost" className="mt-2 w-full" asChild>
+                <Link href="/forgot-password">Forgot password?</Link>
+              </Button>
+              <Button type="button" variant="ghost" className="w-full" asChild>
+                <Link href="/login/code">Email me a code instead</Link>
+              </Button>
+            </>
+          ) : null}
         </form>
       )}
 

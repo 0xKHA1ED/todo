@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
+import { getSupabaseClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/lib/store/useAuthStore'
 
 export default function ResetPasswordPage() {
@@ -19,18 +20,29 @@ export default function ResetPasswordPage() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (useAuthStore.getState().session) {
-      setStatus('ready')
-      return
+    const existingSession = useAuthStore.getState().session
+
+    if (!existingSession) {
+      const unsub = useAuthStore.subscribe((state) => {
+        if (state.session) setStatus('ready')
+      })
+      const timeout = window.setTimeout(() => {
+        if (!useAuthStore.getState().session) setStatus('expired')
+      }, 1200)
+      return () => {
+        unsub()
+        window.clearTimeout(timeout)
+      }
     }
-    const unsub = useAuthStore.subscribe((state) => {
-      if (state.session) setStatus('ready')
+
+    const { data } = getSupabaseClient().auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setStatus('ready')
     })
     const timeout = window.setTimeout(() => {
-      if (!useAuthStore.getState().session) setStatus('expired')
+      setStatus((current) => (current === 'waiting' ? 'expired' : current))
     }, 1200)
     return () => {
-      unsub()
+      data.subscription.unsubscribe()
       window.clearTimeout(timeout)
     }
   }, [])

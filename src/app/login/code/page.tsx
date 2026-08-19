@@ -59,9 +59,9 @@ export default function EmailCodePage() {
     try {
       await verifyEmailCode(email, trimmed)
       router.replace('/map')
-    } catch (error) {
+    } catch {
       toast({
-        title: error instanceof Error ? error.message : 'Could not verify code',
+        title: 'Invalid or expired code',
         variant: 'destructive',
       })
     } finally {

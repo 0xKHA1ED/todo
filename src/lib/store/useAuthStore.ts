@@ -5,8 +5,13 @@ import { create } from 'zustand'
 import { getClientAuthRedirectUrl } from '@/lib/auth/redirectUrl'
 import { getSupabaseClient, getSupabaseConfigError } from '@/lib/supabase/client'
 
-function isConfigOrRateLimit(error: { status?: number; message: string }) {
-  return error.status === 429 || error.message.toLowerCase().includes('not configured')
+function shouldThrowSendError(error: { status?: number; message: string; name?: string }) {
+  if (error.status === 429 || error.status === 0 || (error.status !== undefined && error.status >= 500)) return true
+  const message = error.message.toLowerCase()
+  if (message.includes('not configured')) return true
+  if (error.name === 'AuthRetryableFetchError') return true
+  if (message.includes('failed to fetch') || message.includes('network')) return true
+  return false
 }
 
 interface AuthStore {
@@ -57,7 +62,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: getClientAuthRedirectUrl('/reset-password'),
     })
-    if (error && isConfigOrRateLimit(error)) throw error
+    if (error && shouldThrowSendError(error)) throw error
   },
 
   async updatePassword(password) {
@@ -75,7 +80,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         emailRedirectTo: getClientAuthRedirectUrl('/auth/callback'),
       },
     })
-    if (error && isConfigOrRateLimit(error)) throw error
+    if (error && shouldThrowSendError(error)) throw error
   },
 
   async verifyEmailCode(email, token) {

@@ -147,7 +147,7 @@ Go to **Settings → Secrets and variables → Actions → New repository secret
 
 ### 3. Deploy
 
-Push to the `main` branch (or trigger the workflow manually from **Actions → Deploy to GitHub Pages → Run workflow**).
+Push to the `master` branch (or trigger the workflow manually from **Actions → Deploy to GitHub Pages → Run workflow**).
 
 The workflow defined in [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
 

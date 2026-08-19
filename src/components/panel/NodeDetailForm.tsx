@@ -96,9 +96,14 @@ export function NodeDetailForm({ node }: NodeDetailFormProps) {
 
   async function confirmDelete() {
     try {
+      const parentId = node.parent_id
+      const standing = useUIStore.getState().currentPlaceId
       await deleteNode(node.id)
       setDeleteOpen(false)
       closePanel()
+      if (parentId && standing === node.id) {
+        useUIStore.getState().enterPlace(parentId)
+      }
     } catch (error) {
       toast({
         title: 'Delete failed',

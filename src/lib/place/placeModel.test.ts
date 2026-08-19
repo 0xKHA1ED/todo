@@ -201,6 +201,26 @@ describe('visibleChildren', () => {
     expect(views[0]?.dueCount).toBe(1)
   })
 
+  it('makes an area loud when the area itself is due today', () => {
+    const nodes = [
+      home,
+      node({ id: 'fin', title: 'Finances', date: '2026-08-18' }),
+      node({ id: 'note', title: 'Someday note', parent_id: 'fin' }),
+    ]
+    const views = visibleChildren(nodes, 'home', false, today, now)
+    expect(views[0]?.density).toBe('loud')
+  })
+
+  it('makes a high-urgency undated area at least medium', () => {
+    const nodes = [
+      home,
+      node({ id: 'fin', title: 'Finances', urgency: 'high' }),
+      node({ id: 'note', title: 'Someday note', parent_id: 'fin' }),
+    ]
+    const views = visibleChildren(nodes, 'home', false, today, now)
+    expect(['medium', 'loud']).toContain(views[0]?.density)
+  })
+
   it('hides completed leaves and fully-completed areas unless showDone', () => {
     const nodes = [
       home,

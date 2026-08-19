@@ -12,18 +12,20 @@ export function useCommandSearch(query: string): CommandSearchResult[] {
     const normalized = query.trim().toLowerCase()
     return nodes
       .filter((node) => node.parent_id !== null)
+      .filter((node) => {
+        if (!normalized) return true
+        const preview = getPlainTextFromTipTap(node.description).slice(0, 120)
+        return (
+          node.title.toLowerCase().includes(normalized) ||
+          preview.toLowerCase().includes(normalized) ||
+          node.tags.some((tag) => tag.toLowerCase().includes(normalized))
+        )
+      })
       .map((node) => ({
         id: node.id,
         title: node.title,
         descriptionPreview: getPlainTextFromTipTap(node.description).slice(0, 120),
       }))
-      .filter((node) => {
-        if (!normalized) return true
-        return (
-          node.title.toLowerCase().includes(normalized) ||
-          node.descriptionPreview.toLowerCase().includes(normalized)
-        )
-      })
       .slice(0, 30)
   }, [nodes, query])
 }

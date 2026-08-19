@@ -146,21 +146,19 @@ function leafDensity(node: NodeRecord, today: Date): NodeDensity {
   return 'compact'
 }
 
+function louder(a: NodeDensity, b: NodeDensity): NodeDensity {
+  if (a === 'loud' || b === 'loud') return 'loud'
+  if (a === 'medium' || b === 'medium') return 'medium'
+  return a === 'area' || b === 'area' ? 'area' : 'compact'
+}
+
 function areaDensity(descendants: NodeRecord[], today: Date): NodeDensity {
   const open = descendants.filter((node) => !node.completed)
-  if (open.some((node) => {
-    const until = daysUntil(node.date, today)
-    return until !== null && until <= 0
-  })) {
-    return 'loud'
+  let density: NodeDensity = 'area'
+  for (const node of open) {
+    density = louder(density, leafDensity(node, today))
   }
-  if (open.some((node) => {
-    const until = daysUntil(node.date, today)
-    return (until !== null && until <= 7) || node.urgency === 'high'
-  })) {
-    return 'medium'
-  }
-  return 'area'
+  return density
 }
 
 function childStaleDays(node: NodeRecord, now: Date): number | null {
@@ -199,7 +197,7 @@ export function visibleChildren(
     if (child.completed) {
       density = 'compact'
     } else if (area) {
-      density = areaDensity(descendants, today)
+      density = louder(leafDensity(child, today), areaDensity(descendants, today))
     } else {
       density = leafDensity(child, today)
     }

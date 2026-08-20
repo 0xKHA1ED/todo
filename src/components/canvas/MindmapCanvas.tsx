@@ -139,12 +139,12 @@ export function MindmapCanvas() {
         const targetRecord = dbNodes.find(
           (node) => node.id === (dropTargetId ?? intersectingTarget?.id ?? null),
         )
-        const shouldReparent =
-          Boolean(targetRecord) &&
-          targetRecord?.parent_id !== null &&
-          targetRecord.id !== source.parent_id
+        const reparentTarget =
+          targetRecord && targetRecord.parent_id !== null && targetRecord.id !== source.parent_id
+            ? targetRecord
+            : null
 
-        if (shouldReparent && isDescendant(dbNodes, source.id, targetRecord!.id)) {
+        if (reparentTarget && isDescendant(dbNodes, source.id, reparentTarget.id)) {
           toast({
             title: 'Cannot re-parent node',
             description: 'That move would create a circular hierarchy.',
@@ -159,12 +159,12 @@ export function MindmapCanvas() {
           })
         }
 
-        if (!shouldReparent || !targetRecord) return
-        if (isDescendant(dbNodes, source.id, targetRecord.id)) {
+        if (!reparentTarget) return
+        if (isDescendant(dbNodes, source.id, reparentTarget.id)) {
           return
         }
 
-        await reparentNode(source.id, targetRecord.id)
+        await reparentNode(source.id, reparentTarget.id)
       } catch (error) {
         toast({
           title: 'Drag failed',

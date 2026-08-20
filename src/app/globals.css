@@ -87,15 +87,17 @@
   }
 
   .mindmap-canvas {
-    background: hsl(var(--canvas));
+    background:
+      radial-gradient(circle at top left, rgba(148, 163, 184, 0.14), transparent 28%),
+      radial-gradient(circle at right 18%, rgba(14, 165, 233, 0.12), transparent 24%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(238, 244, 248, 0.96));
   }
 
   .mindmap-node-title {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    overflow: hidden;
+    display: block;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
   }
 
   .mindmap-edge-path {

@@ -13,7 +13,7 @@ export function SlideOutPanel() {
     <Sheet open={isPanelOpen} onOpenChange={(open) => !open && closePanel()}>
       <SheetContent
         side="right"
-        className="w-[92vw] overflow-y-auto sm:max-w-none md:w-[600px]"
+        className="w-[94vw] overflow-y-auto border-l border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(241,245,249,0.95))] sm:max-w-none md:w-[640px]"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <SheetHeader>

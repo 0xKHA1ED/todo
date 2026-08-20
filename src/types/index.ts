@@ -47,6 +47,7 @@ export type NodeData = NodeRecord &
     density: NodeDensity
     insideCount: number
     dueCount: number
+    attentionCount: number
     staleDays: number | null
   } & Record<string, unknown>
 export type FlowNode = Node<NodeData, 'customNode'>

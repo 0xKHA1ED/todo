@@ -38,8 +38,8 @@ export function CanvasToolbar({ loading, error }: CanvasToolbarProps) {
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-lg border bg-card/95 p-1.5 shadow-lg backdrop-blur">
-      <Button size="sm" variant="secondary" onClick={() => fitView({ padding: 0.2, duration: 400 })}>
+    <div className="flex items-center gap-2 rounded-full border border-white/75 bg-white/78 p-1.5 shadow-[0_20px_65px_-42px_rgba(15,23,42,0.8)] backdrop-blur-xl">
+      <Button size="sm" variant="secondary" onClick={() => fitView({ padding: 0.12, duration: 320 })}>
         <Maximize2 className="mr-2 h-3.5 w-3.5" />
         Fit
       </Button>

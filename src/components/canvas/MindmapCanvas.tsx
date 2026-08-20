@@ -71,7 +71,7 @@ export function MindmapCanvas() {
   useEffect(() => {
     if (!visibleNodeKey) return
     const timeout = window.setTimeout(() => {
-      fitView({ padding: 0.2, duration: 400 })
+      fitView({ padding: 0.12, duration: 320 })
     }, 50)
     return () => window.clearTimeout(timeout)
   }, [fitView, visibleNodeKey])

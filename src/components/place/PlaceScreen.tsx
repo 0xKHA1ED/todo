@@ -25,6 +25,7 @@ export function PlaceScreen() {
   const enterPlace = useUIStore((state) => state.enterPlace)
   const resetPlace = useUIStore((state) => state.resetPlace)
   const selectNode = useUIStore((state) => state.selectNode)
+  const openPanel = useUIStore((state) => state.openPanel)
 
   useKeyboardNav()
 
@@ -74,8 +75,28 @@ export function PlaceScreen() {
     ? pickForgotten(nodes, currentPlaceId, clock, new Set(nowRanked.items.map((item) => item.node.id)))
     : null
 
+  const nodesById = new Map(nodes.map((node) => [node.id, node]))
   const childViews = currentPlaceId ? visibleChildren(nodes, currentPlaceId, showDone, clock, clock) : []
-  const forgottenStaleDays = childViews.find((view) => view.node.id === forgotten?.id)?.staleDays
+  const forgottenStaleDays = forgotten
+    ? forgotten.last_visited_at === null
+      ? -1
+      : Math.max(0, Math.floor((clock.getTime() - Date.parse(forgotten.last_visited_at)) / 86_400_000))
+    : null
+  const forgottenPath = forgotten
+    ? (() => {
+        const path: string[] = []
+        let currentId = forgotten.parent_id
+
+        while (currentId) {
+          const currentNode = nodesById.get(currentId)
+          if (!currentNode) break
+          if (currentNode.parent_id !== null) path.unshift(currentNode.title)
+          currentId = currentNode.parent_id
+        }
+
+        return path.join(' / ') || 'Home'
+      })()
+    : null
   const showEmptyPrompt = !loading && Boolean(currentPlaceId) && childViews.length === 0
 
   function handleNowPick(id: string) {
@@ -85,21 +106,33 @@ export function PlaceScreen() {
     selectNode(item.id)
   }
 
+  function handleForgottenOpen() {
+    if (!forgotten) return
+
+    markVisited(forgotten.id).catch(() => undefined)
+    if (forgotten.parent_id) {
+      enterPlace(forgotten.parent_id)
+      window.requestAnimationFrame(() => openPanel(forgotten.id))
+      return
+    }
+
+    openPanel(forgotten.id)
+  }
+
   return (
-    <div className="grid h-screen w-screen grid-cols-[18rem_minmax(0,1fr)] overflow-hidden">
-      <aside className="flex w-72 flex-col gap-4 overflow-y-auto border-r bg-background p-4">
+    <div className="grid h-screen w-screen grid-cols-[20rem_minmax(0,1fr)] overflow-hidden bg-[linear-gradient(135deg,rgba(239,244,247,1),rgba(228,236,244,0.96)_48%,rgba(220,231,239,1))]">
+      <aside className="relative flex w-80 flex-col gap-4 overflow-y-auto border-r border-white/35 bg-white/45 p-4 backdrop-blur-2xl">
         <NowList items={nowRanked.items} overflow={nowRanked.overflow} onPick={handleNowPick} />
         <ForgottenCard
           node={forgotten}
           staleDays={forgottenStaleDays}
-          onOpen={() => {
-            if (forgotten) enterPlace(forgotten.id)
-          }}
+          pathLabel={forgottenPath}
+          onOpen={handleForgottenOpen}
         />
       </aside>
       <div className="relative min-h-0 min-w-0">
         <MindmapCanvas />
-        <div className="pointer-events-none absolute left-4 top-4 z-20 flex max-w-[calc(100%-2rem)] flex-col gap-2">
+        <div className="pointer-events-none absolute left-4 top-4 z-20 flex max-w-[calc(100%-2rem)] flex-col gap-3">
           <div className="pointer-events-auto">
             <PlaceBreadcrumb />
           </div>
@@ -108,8 +141,8 @@ export function PlaceScreen() {
           </div>
         </div>
         {showEmptyPrompt && (
-          <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-card/95 px-5 py-4 text-center shadow-lg">
-            <p className="font-medium text-muted-foreground">
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-[1.7rem] border border-white/75 bg-white/86 px-6 py-5 text-center shadow-[0_28px_90px_-50px_rgba(15,23,42,0.8)] backdrop-blur-xl">
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500">
               {isRootPlace ? 'Add a project' : 'Add a child'}
             </p>
           </div>

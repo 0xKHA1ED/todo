@@ -146,16 +146,29 @@ export function pickForgotten(
   _now: Date,
   _nowItemIds: Set<string>,
 ): NodeRecord | null {
-  const children = getDirectChildren(nodes, placeId).filter((node) => !node.completed)
-  if (children.length === 0) return null
+  const nodesById = new Map(nodes.map((node) => [node.id, node]))
+  const parentsWithChildren = new Set(
+    nodes.map((node) => node.parent_id).filter((parentId): parentId is string => parentId !== null),
+  )
+  const leaves = subtreeDescendants(nodes, placeId).filter((node) => {
+    if (node.completed || parentsWithChildren.has(node.id)) return false
+
+    let currentParentId = node.parent_id
+    while (currentParentId && currentParentId !== placeId) {
+      const parent = nodesById.get(currentParentId)
+      if (!parent) break
+      if (parent.completed) return false
+      currentParentId = parent.parent_id
+    }
+
+    return true
+  })
+  if (leaves.length === 0) return null
 
   return (
-    [...children].sort((a, b) => {
+    [...leaves].sort((a, b) => {
       const visitedDelta = visitedAtMs(a) - visitedAtMs(b)
       if (visitedDelta !== 0) return visitedDelta
-
-      const areaDelta = Number(isArea(nodes, b.id)) - Number(isArea(nodes, a.id))
-      if (areaDelta !== 0) return areaDelta
 
       return a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at)
     })[0] ?? null
@@ -167,6 +180,7 @@ export type PlaceChildView = {
   density: NodeDensity
   insideCount: number
   dueCount: number
+  attentionCount: number
   staleDays: number | null
 }
 
@@ -198,12 +212,22 @@ function childStaleDays(node: NodeRecord, now: Date): number | null {
   return Math.floor((now.getTime() - Date.parse(node.last_visited_at)) / 86_400_000)
 }
 
-function childDueCount(descendants: NodeRecord[], today: Date): number {
-  return descendants.filter((node) => {
-    if (node.completed) return false
-    const until = daysUntil(node.date, today)
+function isAttentionNode(node: NodeRecord, today: Date): boolean {
+  if (node.completed) return false
+  const until = daysUntil(node.date, today)
+  return (until !== null && until <= 7) || node.urgency === 'high'
+}
+
+function childDueCount(node: NodeRecord, descendants: NodeRecord[], today: Date): number {
+  return [node, ...descendants].filter((candidate) => {
+    if (candidate.completed) return false
+    const until = daysUntil(candidate.date, today)
     return until !== null && until <= 7
   }).length
+}
+
+function childAttentionCount(node: NodeRecord, descendants: NodeRecord[], today: Date): number {
+  return [node, ...descendants].filter((candidate) => isAttentionNode(candidate, today)).length
 }
 
 export function visibleChildren(
@@ -237,7 +261,8 @@ export function visibleChildren(
       node: child,
       density,
       insideCount: descendants.length,
-      dueCount: childDueCount(descendants, today),
+      dueCount: childDueCount(child, descendants, today),
+      attentionCount: childAttentionCount(child, descendants, today),
       staleDays: childStaleDays(child, now),
     })
   }

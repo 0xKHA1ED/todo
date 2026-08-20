@@ -1,7 +1,7 @@
 import { memo, type MouseEvent } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { PanelRightOpen } from 'lucide-react'
-import { DENSITY_SIZE } from '@/lib/flow/treeLayout'
+import { getNodeSize } from '@/lib/flow/treeLayout'
 import { daysUntil } from '@/lib/place/placeModel'
 import { useUIStore } from '@/lib/store/useUIStore'
 import { cn, formatDate } from '@/lib/utils'
@@ -24,7 +24,7 @@ function areaHints(data: NodeData): string {
 }
 
 export const CustomNode = memo(({ data }: NodeProps<FlowNode>) => {
-  const size = DENSITY_SIZE[data.density]
+  const size = getNodeSize(data.density, data.attentionCount, data.title)
   const isArea = data.insideCount > 0
   const today = new Date()
   const dueLabel = loudDueLabel(data.date, today)
@@ -38,11 +38,13 @@ export const CustomNode = memo(({ data }: NodeProps<FlowNode>) => {
   return (
     <div
       className={cn(
-        'mindmap-node relative overflow-hidden rounded-lg bg-card text-left',
-        data.density === 'loud' ? 'border-2 border-rose-500' : 'border border-border/90',
-        data.completed && 'bg-card/80',
+        'mindmap-node relative rounded-[1.35rem] text-left shadow-[0_18px_50px_-28px_rgba(15,23,42,0.45)]',
+        data.density === 'loud'
+          ? 'border border-rose-300/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,241,242,0.96))]'
+          : 'border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,247,251,0.94))]',
+        data.completed && 'bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(236,240,244,0.88))]',
       )}
-      style={{ width: size.width, height: size.height }}
+      style={{ width: size.width, minHeight: size.height }}
     >
       <Handle type="target" position={Position.Left} className="opacity-0" />
       <Handle type="source" position={Position.Right} className="opacity-0" />
@@ -60,24 +62,23 @@ export const CustomNode = memo(({ data }: NodeProps<FlowNode>) => {
         </button>
       )}
 
-      <div className="flex h-full w-full flex-col justify-center px-3 py-2">
+      <div className="flex h-full w-full flex-col justify-center gap-1 px-4 py-3">
         <p
           className={cn(
             'mindmap-node-title text-[15px] font-semibold leading-snug text-card-foreground',
             data.completed && 'text-muted-foreground line-through',
-            data.density === 'compact' && 'truncate',
           )}
         >
           {data.title}
         </p>
         {isArea && data.density !== 'compact' && (
-          <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">{areaHints(data)}</p>
+          <p className="text-[11px] font-medium leading-snug text-muted-foreground">{areaHints(data)}</p>
         )}
         {!isArea && data.density === 'loud' && dueLabel && (
-          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-rose-600">{dueLabel}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-600">{dueLabel}</p>
         )}
         {!isArea && data.density === 'medium' && (
-          <p className="mt-1 truncate text-[11px] font-medium text-muted-foreground">
+          <p className="text-[11px] font-medium leading-snug text-muted-foreground">
             {data.date ? formatDate(data.date) : 'high'}
           </p>
         )}

@@ -26,7 +26,7 @@ export function PlaceBreadcrumb() {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="flex items-center gap-1 rounded-lg border bg-card/95 p-1.5 shadow-lg backdrop-blur"
+      className="flex items-center gap-1 rounded-full border border-white/75 bg-white/78 p-1.5 shadow-[0_20px_65px_-42px_rgba(15,23,42,0.8)] backdrop-blur-xl"
     >
       <Button
         type="button"

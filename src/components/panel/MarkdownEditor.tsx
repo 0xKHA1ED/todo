@@ -23,6 +23,7 @@ export function MarkdownEditor({ nodeId, initialContent }: MarkdownEditorProps) 
   const updateNode = useNodeStore((state) => state.updateNode)
   const debounceRef = useRef<number | null>(null)
   const pendingContentRef = useRef<string | null>(null)
+  const hydratedNodeIdRef = useRef<string | null>(null)
   const parsedContent = useMemo(() => parseContent(initialContent), [initialContent])
 
   const editor = useEditor({
@@ -48,8 +49,17 @@ export function MarkdownEditor({ nodeId, initialContent }: MarkdownEditorProps) 
 
   useEffect(() => {
     if (!editor) return
+
+    const serializedContent = JSON.stringify(editor.getJSON())
+    const shouldResetForNodeChange = hydratedNodeIdRef.current !== nodeId
+    const shouldApplyExternalUpdate =
+      !shouldResetForNodeChange && !editor.isFocused && pendingContentRef.current === null && serializedContent !== initialContent
+
+    if (!shouldResetForNodeChange && !shouldApplyExternalUpdate) return
+
     editor.commands.setContent(parsedContent, false)
-  }, [editor, nodeId, parsedContent])
+    hydratedNodeIdRef.current = nodeId
+  }, [editor, initialContent, nodeId, parsedContent])
 
   useEffect(
     () => () => {

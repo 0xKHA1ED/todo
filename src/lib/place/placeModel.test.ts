@@ -82,7 +82,7 @@ describe('rankNow', () => {
 describe('pickForgotten', () => {
   const now = new Date('2026-08-18T12:00:00.000Z')
 
-  it('picks the direct child unseen for the longest time, even when it is a leaf', () => {
+  it('picks the leaf unseen for the longest time anywhere in the subtree', () => {
     const nodes = [
       home,
       node({
@@ -90,7 +90,7 @@ describe('pickForgotten', () => {
         title: 'Design',
         last_visited_at: new Date(now.getTime() - STALE_MS - 1000).toISOString(),
       }),
-      node({ id: 'logo', title: 'Logo', parent_id: 'design' }),
+      node({ id: 'logo', title: 'Logo', parent_id: 'design', last_visited_at: new Date(now.getTime() - STALE_MS * 2).toISOString() }),
       node({
         id: 'undated-leaf',
         title: 'Someday leaf',
@@ -132,10 +132,11 @@ describe('pickForgotten', () => {
   it('treats null last_visited_at as oldest', () => {
     const nodes = [
       home,
-      node({ id: 'area', title: 'Health' }),
-      node({ id: 'gym', title: 'Gym', parent_id: 'area' }),
+      node({ id: 'area', title: 'Health', last_visited_at: now.toISOString() }),
+      node({ id: 'gym', title: 'Gym', parent_id: 'area', last_visited_at: null }),
+      node({ id: 'fresh', title: 'Fresh leaf', last_visited_at: now.toISOString() }),
     ]
-    expect(pickForgotten(nodes, 'home', now, new Set())?.title).toBe('Health')
+    expect(pickForgotten(nodes, 'home', now, new Set())?.title).toBe('Gym')
   })
 
   it('skips completed children', () => {
@@ -157,7 +158,7 @@ describe('pickForgotten', () => {
     expect(pickForgotten(nodes, 'home', now, new Set())?.title).toBe('Forgotten leaf')
   })
 
-  it('only considers direct children, not nested descendants', () => {
+  it('considers nested leaf descendants even when their parent area is fresh', () => {
     const nodes = [
       home,
       node({
@@ -172,7 +173,7 @@ describe('pickForgotten', () => {
         last_visited_at: null,
       }),
     ]
-    expect(pickForgotten(nodes, 'home', now, new Set())?.title).toBe('Fresh area')
+    expect(pickForgotten(nodes, 'home', now, new Set())?.title).toBe('Nested stale')
   })
 })
 

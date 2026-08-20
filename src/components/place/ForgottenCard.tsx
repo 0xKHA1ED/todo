@@ -15,6 +15,8 @@ function unseenCopy(node: NodeRecord, staleDays?: number | null) {
     staleDays != null && staleDays >= 0
       ? staleDays
       : Math.floor((Date.now() - Date.parse(node.last_visited_at)) / 86_400_000)
+  if (days <= 0) return 'Last opened today'
+  if (days === 1) return 'Last opened 1 day ago'
   return `Unseen for ${days} days`
 }
 

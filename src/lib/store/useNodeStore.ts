@@ -117,12 +117,18 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
     if (selected.parent_id === null) throw new Error('The root node cannot be re-parented.')
     if (newParentId === id) throw new Error('A node cannot be parented to itself.')
 
+    const nextSortOrder = get().nodes.filter((node) => node.parent_id === newParentId && node.id !== id).length
+
     const previous = get().nodes
     set((state) => ({
-      nodes: sortNodes(state.nodes.map((node) => (node.id === id ? { ...node, parent_id: newParentId } : node))),
+      nodes: sortNodes(
+        state.nodes.map((node) =>
+          node.id === id ? { ...node, parent_id: newParentId, sort_order: nextSortOrder } : node,
+        ),
+      ),
     }))
     try {
-      await queries.reparentNode(id, newParentId)
+      await queries.reparentNode(id, newParentId, nextSortOrder)
     } catch (error) {
       set({ nodes: previous })
       throw error

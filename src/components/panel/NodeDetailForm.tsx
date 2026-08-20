@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, RotateCcw, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import {
   Dialog,
   DialogContent,
@@ -30,8 +31,11 @@ interface NodeDetailFormProps {
 
 export function NodeDetailForm({ node }: NodeDetailFormProps) {
   const { toast } = useToast()
+  const nodes = useNodeStore((state) => state.nodes)
   const updateNode = useNodeStore((state) => state.updateNode)
   const deleteNode = useNodeStore((state) => state.deleteNode)
+  const reparentNode = useNodeStore((state) => state.reparentNode)
+  const getSubtreeIds = useNodeStore((state) => state.getSubtreeIds)
   const closePanel = useUIStore((state) => state.closePanel)
   const titleFocusRequest = useUIStore((state) => state.titleFocusRequest)
   const clearTitleFocusRequest = useUIStore((state) => state.clearTitleFocusRequest)
@@ -39,6 +43,36 @@ export function NodeDetailForm({ node }: NodeDetailFormProps) {
   const [title, setTitle] = useState(node.title)
   const [tags, setTags] = useState(node.tags.join(', '))
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [moveOpen, setMoveOpen] = useState(false)
+
+  const nodesById = useMemo(() => new Map(nodes.map((candidate) => [candidate.id, candidate])), [nodes])
+  const currentParent = node.parent_id ? nodesById.get(node.parent_id) ?? null : null
+  const moveTargets = useMemo(() => {
+    const subtreeIds = new Set(getSubtreeIds(node.id))
+
+    return nodes
+      .filter((candidate) => !subtreeIds.has(candidate.id))
+      .map((candidate) => {
+        const path: string[] = []
+        let current = candidate
+        const visited = new Set<string>()
+
+        while (current.parent_id && !visited.has(current.id)) {
+          visited.add(current.id)
+          const parent = nodesById.get(current.parent_id)
+          if (!parent) break
+          path.unshift(parent.parent_id === null ? 'Home' : parent.title)
+          current = parent
+        }
+
+        return {
+          id: candidate.id,
+          title: candidate.parent_id === null ? 'Home' : candidate.title,
+          path: path.join(' / ') || 'Home',
+          isCurrentParent: candidate.id === node.parent_id,
+        }
+      })
+  }, [getSubtreeIds, node.id, node.parent_id, nodes, nodesById])
 
   useEffect(() => {
     setTitle(node.title)
@@ -89,6 +123,24 @@ export function NodeDetailForm({ node }: NodeDetailFormProps) {
       toast({
         title: 'Save failed',
         description: error instanceof Error ? error.message : 'Could not save your change.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  async function moveNode(newParentId: string) {
+    if (newParentId === node.parent_id) {
+      setMoveOpen(false)
+      return
+    }
+
+    try {
+      await reparentNode(node.id, newParentId)
+      setMoveOpen(false)
+    } catch (error) {
+      toast({
+        title: 'Move failed',
+        description: error instanceof Error ? error.message : 'Could not move this node.',
         variant: 'destructive',
       })
     }
@@ -225,6 +277,20 @@ export function NodeDetailForm({ node }: NodeDetailFormProps) {
 
       <Separator />
 
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <Label>Location</Label>
+          <p className="text-sm text-muted-foreground">
+            {currentParent ? `Inside ${currentParent.parent_id === null ? 'Home' : currentParent.title}` : 'Home'}
+          </p>
+        </div>
+        <Button type="button" variant="secondary" disabled={node.parent_id === null} onClick={() => setMoveOpen(true)}>
+          Move subtree
+        </Button>
+      </div>
+
+      <Separator />
+
       <Button
         type="button"
         variant="destructive"
@@ -234,6 +300,35 @@ export function NodeDetailForm({ node }: NodeDetailFormProps) {
         <Trash2 className="mr-2 h-4 w-4" />
         Delete node and children
       </Button>
+
+      <Dialog open={moveOpen} onOpenChange={setMoveOpen}>
+        <DialogContent className="overflow-hidden p-0">
+          <DialogHeader className="px-6 pt-6">
+            <DialogTitle>Move this subtree</DialogTitle>
+            <DialogDescription>
+              Pick the new parent. The selected node and every child below it move together.
+            </DialogDescription>
+          </DialogHeader>
+          <Command>
+            <CommandInput placeholder="Search destinations..." />
+            <CommandList>
+              <CommandEmpty>No valid destinations.</CommandEmpty>
+              <CommandGroup heading="Move under">
+                {moveTargets.map((target) => (
+                  <CommandItem key={target.id} value={`${target.title} ${target.path}`} onSelect={() => moveNode(target.id)}>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{target.title}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {target.isCurrentParent ? 'Current parent' : target.path}
+                      </p>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>

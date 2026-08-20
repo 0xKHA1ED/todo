@@ -25,14 +25,17 @@ export function CommandPalette() {
 
   function handleSelect(nodeId: string) {
     const hit = nodes.find((node) => node.id === nodeId)
+    const isArea = hit ? nodes.some((node) => node.parent_id === hit.id) : false
     toggleCommandPalette(false)
     setQuery('')
     if (!hit) return
     if (hit.parent_id) {
       enterPlace(hit.parent_id)
-      selectNode(hit.id)
-      const isArea = nodes.some((node) => node.parent_id === hit.id)
-      if (!isArea) openPanel(hit.id)
+      if (isArea) {
+        selectNode(hit.id)
+      } else {
+        window.requestAnimationFrame(() => openPanel(hit.id))
+      }
     } else {
       enterPlace(hit.id)
     }

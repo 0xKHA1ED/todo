@@ -39,20 +39,21 @@ describe('rankNow', () => {
       node({ id: 'done', title: 'Done today', date: '2026-08-18', completed: true, sort_order: 8 }),
     ]
     const result = rankNow(nodes, 'home', today)
-    expect(result.items.map((item) => item.title)).toEqual([
+    expect(result.items.map((item) => item.node.title)).toEqual([
       'Also overdue',
       'Overdue',
       'Today',
       'This week',
       'High undated',
     ])
+    expect(result.items.map((item) => item.bucket)).toEqual(['overdue', 'overdue', 'today', 'soon', 'high'])
     expect(result.overflow).toBe(1)
   })
 
   it('does not include the place node itself', () => {
     const nodes = [home, node({ id: 'child', title: 'Child', date: '2026-08-18' })]
     const result = rankNow(nodes, 'home', today)
-    expect(result.items.map((item) => item.id)).toEqual(['child'])
+    expect(result.items.map((item) => item.node.id)).toEqual(['child'])
   })
 
   it('includes nested descendants of the current place', () => {
@@ -62,14 +63,26 @@ describe('rankNow', () => {
       node({ id: 'bill', title: 'Pay ads', parent_id: 'biz', date: '2026-08-18' }),
     ]
     const result = rankNow(nodes, 'home', today)
-    expect(result.items.map((item) => item.title)).toEqual(['Pay ads'])
+    expect(result.items.map((item) => item.node.title)).toEqual(['Pay ads'])
+  })
+
+  it('sorts within a bucket by urgency and then oldest visit', () => {
+    const nodes = [
+      home,
+      node({ id: 'normal-recent', title: 'Normal recent', date: '2026-08-18', last_visited_at: '2026-08-18T11:00:00.000Z' }),
+      node({ id: 'normal-old', title: 'Normal old', date: '2026-08-18', last_visited_at: '2026-08-10T11:00:00.000Z' }),
+      node({ id: 'high', title: 'High today', date: '2026-08-18', urgency: 'high', last_visited_at: '2026-08-18T11:59:00.000Z' }),
+    ]
+
+    const result = rankNow(nodes, 'home', today)
+    expect(result.items.map((item) => item.node.title)).toEqual(['High today', 'Normal old', 'Normal recent'])
   })
 })
 
 describe('pickForgotten', () => {
   const now = new Date('2026-08-18T12:00:00.000Z')
 
-  it('prefers the oldest stale area over a stale leaf', () => {
+  it('picks the direct child unseen for the longest time, even when it is a leaf', () => {
     const nodes = [
       home,
       node({
@@ -85,10 +98,10 @@ describe('pickForgotten', () => {
       }),
     ]
     const picked = pickForgotten(nodes, 'home', now, new Set())
-    expect(picked?.title).toBe('Design')
+    expect(picked?.title).toBe('Someday leaf')
   })
 
-  it('resurfaces a stale leaf when no stale area exists, skipping Now items', () => {
+  it('does not skip a Now item when it is the oldest direct child', () => {
     const nodes = [
       home,
       node({
@@ -100,22 +113,23 @@ describe('pickForgotten', () => {
       node({
         id: 'stale',
         title: 'Forgotten leaf',
-        last_visited_at: new Date(now.getTime() - STALE_MS - 1000).toISOString(),
+        last_visited_at: new Date(now.getTime() - STALE_MS + 1000).toISOString(),
       }),
     ]
     const picked = pickForgotten(nodes, 'home', now, new Set(['in-now']))
-    expect(picked?.title).toBe('Forgotten leaf')
+    expect(picked?.title).toBe('Due leaf')
   })
 
-  it('returns null when nothing is stale', () => {
+  it('still returns the oldest child when nothing is stale', () => {
     const nodes = [
       home,
       node({ id: 'fresh', title: 'Fresh', last_visited_at: now.toISOString() }),
+      node({ id: 'older-fresh', title: 'Older fresh', last_visited_at: new Date(now.getTime() - 60_000).toISOString() }),
     ]
-    expect(pickForgotten(nodes, 'home', now, new Set())).toBeNull()
+    expect(pickForgotten(nodes, 'home', now, new Set())?.title).toBe('Older fresh')
   })
 
-  it('treats null last_visited_at as stale', () => {
+  it('treats null last_visited_at as oldest', () => {
     const nodes = [
       home,
       node({ id: 'area', title: 'Health' }),
@@ -158,7 +172,7 @@ describe('pickForgotten', () => {
         last_visited_at: null,
       }),
     ]
-    expect(pickForgotten(nodes, 'home', now, new Set())).toBeNull()
+    expect(pickForgotten(nodes, 'home', now, new Set())?.title).toBe('Fresh area')
   })
 })
 

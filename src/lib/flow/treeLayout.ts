@@ -68,13 +68,20 @@ export function buildFlowGraph(
   const views = visibleChildren(dbNodes, placeId, showDone, today, now)
   const progressLookup = buildProgressLookup(dbNodes)
 
-  let y = 0
+  let fallbackY = 0
   const nodes: FlowNode[] = views.map((view) => {
     const size = DENSITY_SIZE[view.density]
+    const hasStoredPosition = view.node.position_x !== 0 || view.node.position_y !== 0
+    const position = hasStoredPosition
+      ? { x: view.node.position_x, y: view.node.position_y }
+      : { x: 0, y: fallbackY }
+
+    fallbackY = Math.max(fallbackY, position.y + size.height + 16)
+
     const flowNode: FlowNode = {
       id: view.node.id,
       type: 'customNode',
-      position: { x: 0, y },
+      position,
       data: {
         ...view.node,
         ...(progressLookup.get(view.node.id) ?? {
@@ -89,7 +96,6 @@ export function buildFlowGraph(
       },
       style: { width: size.width, height: size.height },
     }
-    y += size.height + 16
     return flowNode
   })
   return { nodes, edges: [] }

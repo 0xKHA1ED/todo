@@ -160,8 +160,9 @@ export async function selectNodeByTitle(page: Page, title: string) {
 }
 
 export async function closePanel(page: Page) {
-  const dialog = page.getByRole('dialog')
-  const closeButton = page.getByRole('button', { name: 'Close' })
+  const dialog = page.getByRole('dialog').last()
+  const closeButton = dialog.getByRole('button', { name: 'Close' })
+  await expect(dialog).toBeVisible()
   await expect(closeButton).toBeVisible()
   await closeButton.click()
   await expect(dialog).toBeHidden()

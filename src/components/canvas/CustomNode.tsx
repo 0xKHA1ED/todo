@@ -1,7 +1,9 @@
-import { memo } from 'react'
+import { memo, type MouseEvent } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
+import { PanelRightOpen } from 'lucide-react'
 import { DENSITY_SIZE } from '@/lib/flow/treeLayout'
 import { daysUntil } from '@/lib/place/placeModel'
+import { useUIStore } from '@/lib/store/useUIStore'
 import { cn, formatDate } from '@/lib/utils'
 import type { FlowNode, NodeData } from '@/types'
 
@@ -26,6 +28,12 @@ export const CustomNode = memo(({ data }: NodeProps<FlowNode>) => {
   const isArea = data.insideCount > 0
   const today = new Date()
   const dueLabel = loudDueLabel(data.date, today)
+  const openPanel = useUIStore((state) => state.openPanel)
+
+  function handleDetailsClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation()
+    openPanel(data.id)
+  }
 
   return (
     <div
@@ -38,6 +46,19 @@ export const CustomNode = memo(({ data }: NodeProps<FlowNode>) => {
     >
       <Handle type="target" position={Position.Left} className="opacity-0" />
       <Handle type="source" position={Position.Right} className="opacity-0" />
+
+      {isArea && (
+        <button
+          type="button"
+          aria-label={`Open details for ${data.title}`}
+          className="absolute right-2 top-2 z-10 rounded-full border border-border/80 bg-card/95 p-1 text-muted-foreground shadow-sm transition-colors hover:text-foreground"
+          onMouseDown={(event) => event.stopPropagation()}
+          onDoubleClick={(event) => event.stopPropagation()}
+          onClick={handleDetailsClick}
+        >
+          <PanelRightOpen className="h-3.5 w-3.5" />
+        </button>
+      )}
 
       <div className="flex h-full w-full flex-col justify-center px-3 py-2">
         <p

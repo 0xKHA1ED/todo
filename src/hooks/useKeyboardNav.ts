@@ -20,12 +20,9 @@ function shouldIgnoreShortcut(event: KeyboardEvent) {
 
 export function useKeyboardNav() {
   const { toast } = useToast()
-  const selectedNodeId = useUIStore((state) => state.selectedNodeId)
-  const currentPlaceId = useUIStore((state) => state.currentPlaceId)
   const closePanel = useUIStore((state) => state.closePanel)
   const toggleCommandPalette = useUIStore((state) => state.toggleCommandPalette)
   const requestTitleFocus = useUIStore((state) => state.requestTitleFocus)
-  const nodes = useNodeStore((state) => state.nodes)
   const createNode = useNodeStore((state) => state.createNode)
   const deleteNode = useNodeStore((state) => state.deleteNode)
 
@@ -45,6 +42,8 @@ export function useKeyboardNav() {
 
       if (shouldIgnoreShortcut(event)) return
 
+  const nodes = useNodeStore.getState().nodes
+  const selectedNodeId = useUIStore.getState().selectedNodeId
       const selected = nodes.find((node) => node.id === selectedNodeId)
       const enterPlace = useUIStore.getState().enterPlace
       const openPanel = useUIStore.getState().openPanel
@@ -99,11 +98,8 @@ export function useKeyboardNav() {
   }, [
     closePanel,
     createNode,
-    currentPlaceId,
     deleteNode,
-    nodes,
     requestTitleFocus,
-    selectedNodeId,
     toast,
     toggleCommandPalette,
   ])

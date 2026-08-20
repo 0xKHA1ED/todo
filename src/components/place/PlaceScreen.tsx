@@ -68,10 +68,10 @@ export function PlaceScreen() {
 
   const nowRanked = currentPlaceId
     ? rankNow(nodes, currentPlaceId, clock)
-    : { items: [] as typeof nodes, overflow: 0 }
+    : { items: [], overflow: 0 }
 
   const forgotten = currentPlaceId
-    ? pickForgotten(nodes, currentPlaceId, clock, new Set(nowRanked.items.map((item) => item.id)))
+    ? pickForgotten(nodes, currentPlaceId, clock, new Set(nowRanked.items.map((item) => item.node.id)))
     : null
 
   const childViews = currentPlaceId ? visibleChildren(nodes, currentPlaceId, showDone, clock, clock) : []

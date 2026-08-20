@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, type MouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type MouseEvent } from 'react'
 import {
   Controls,
   ReactFlow,
@@ -26,12 +26,29 @@ function isDescendant(nodes: NodeRecord[], ancestorId: string, candidateId: stri
   return children.some((child) => child.id === candidateId || isDescendant(nodes, child.id, candidateId))
 }
 
+function dropTargetIdFromEvent(
+  event: MouseEvent,
+  draggedNodeId: string,
+  visibleChildIds: Set<string>,
+): string | null {
+  const elements = document.elementsFromPoint(event.clientX, event.clientY)
+  for (const element of elements) {
+    const wrapper = element.closest('.react-flow__node') as HTMLElement | null
+    const candidateId = wrapper?.dataset.id
+    if (candidateId && candidateId !== draggedNodeId && visibleChildIds.has(candidateId)) {
+      return candidateId
+    }
+  }
+  return null
+}
+
 export function MindmapCanvas() {
   const { toast } = useToast()
   const dbNodes = useNodeStore((state) => state.nodes)
   const reparentNode = useNodeStore((state) => state.reparentNode)
   const updateNode = useNodeStore((state) => state.updateNode)
   const openPanel = useUIStore((state) => state.openPanel)
+  const closePanel = useUIStore((state) => state.closePanel)
   const selectNode = useUIStore((state) => state.selectNode)
   const enterPlace = useUIStore((state) => state.enterPlace)
   const currentPlaceId = useUIStore((state) => state.currentPlaceId)
@@ -44,6 +61,7 @@ export function MindmapCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(flowGraph.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(flowGraph.edges)
   const { getIntersectingNodes, fitView } = useReactFlow()
+  const clickTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
     setNodes(flowGraph.nodes)
@@ -58,57 +76,95 @@ export function MindmapCanvas() {
     return () => window.clearTimeout(timeout)
   }, [fitView, visibleNodeKey])
 
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current !== null) {
+        window.clearTimeout(clickTimeoutRef.current)
+      }
+    }
+  }, [])
+
   const handleNodeClick = useCallback(
     (_event: MouseEvent, node: FlowNode) => {
-      if (node.data.insideCount > 0) {
-        selectNode(node.id)
+      if (node.data.insideCount === 0) {
+        openPanel(node.id)
         return
       }
-      openPanel(node.id)
+
+      if (clickTimeoutRef.current !== null) {
+        window.clearTimeout(clickTimeoutRef.current)
+      }
+      clickTimeoutRef.current = window.setTimeout(() => {
+        const uiState = useUIStore.getState()
+        if (uiState.currentPlaceId !== currentPlaceId || uiState.isPanelOpen) {
+          clickTimeoutRef.current = null
+          return
+        }
+        selectNode(node.id)
+        clickTimeoutRef.current = null
+      }, 180)
     },
-    [openPanel, selectNode],
+    [currentPlaceId, openPanel, selectNode],
   )
 
   const handleNodeDoubleClick = useCallback(
     (event: MouseEvent, node: FlowNode) => {
       event.stopPropagation()
+      if (clickTimeoutRef.current !== null) {
+        window.clearTimeout(clickTimeoutRef.current)
+        clickTimeoutRef.current = null
+      }
+      closePanel()
       enterPlace(node.id)
     },
-    [enterPlace],
+    [closePanel, enterPlace],
   )
 
   const handleNodeDragStop = useCallback(
-    async (_event: MouseEvent, draggedNode: FlowNode) => {
+    async (event: MouseEvent, draggedNode: FlowNode) => {
       const source = dbNodes.find((node) => node.id === draggedNode.id)
       if (!source) return
 
       try {
-        await updateNode(source.id, {
-          position_x: draggedNode.position.x,
-          position_y: draggedNode.position.y,
-        })
+        const dropTargetId =
+          source.parent_id === null ? null : dropTargetIdFromEvent(event, draggedNode.id, visibleChildIds)
 
-        if (source.parent_id === null) return
+        const intersectingTarget =
+          dropTargetId === null
+            ? getIntersectingNodes(draggedNode)
+                .filter((node) => node.id !== draggedNode.id)
+                .find((node) => visibleChildIds.has(node.id))
+            : null
 
-        const target = getIntersectingNodes(draggedNode)
-          .filter((node) => node.id !== draggedNode.id)
-          .find((node) => visibleChildIds.has(node.id))
+        const targetRecord = dbNodes.find(
+          (node) => node.id === (dropTargetId ?? intersectingTarget?.id ?? null),
+        )
+        const shouldReparent =
+          Boolean(targetRecord) &&
+          targetRecord?.parent_id !== null &&
+          targetRecord.id !== source.parent_id
 
-        if (!target || target.id === source.parent_id) return
-
-        const targetRecord = dbNodes.find((node) => node.id === target.id)
-        if (!targetRecord || targetRecord.parent_id === null) return
-
-        if (isDescendant(dbNodes, source.id, target.id)) {
+        if (shouldReparent && isDescendant(dbNodes, source.id, targetRecord!.id)) {
           toast({
             title: 'Cannot re-parent node',
             description: 'That move would create a circular hierarchy.',
             variant: 'destructive',
           })
+        }
+
+        if (source.position_x !== draggedNode.position.x || source.position_y !== draggedNode.position.y) {
+          await updateNode(source.id, {
+            position_x: draggedNode.position.x,
+            position_y: draggedNode.position.y,
+          })
+        }
+
+        if (!shouldReparent || !targetRecord) return
+        if (isDescendant(dbNodes, source.id, targetRecord.id)) {
           return
         }
 
-        await reparentNode(source.id, target.id)
+        await reparentNode(source.id, targetRecord.id)
       } catch (error) {
         toast({
           title: 'Drag failed',

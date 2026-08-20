@@ -60,32 +60,58 @@ export function daysUntil(date: string | null, today: Date): number | null {
   return Math.round((dateLocal - todayLocal) / 86_400_000)
 }
 
-function compareDate(a: NodeRecord, b: NodeRecord): number {
-  return (a.date ?? '').localeCompare(b.date ?? '')
+export type NowBucket = 'overdue' | 'today' | 'soon' | 'high'
+
+export type RankedNowItem = {
+  node: NodeRecord
+  bucket: NowBucket
+  daysUntil: number | null
+}
+
+function urgencyRank(node: NodeRecord): number {
+  if (node.urgency === 'high') return 2
+  if (node.urgency === 'normal') return 1
+  return 0
+}
+
+function compareRankedNow(a: RankedNowItem, b: RankedNowItem): number {
+  const dayDelta = (a.daysUntil ?? Number.MAX_SAFE_INTEGER) - (b.daysUntil ?? Number.MAX_SAFE_INTEGER)
+  if (dayDelta !== 0) return dayDelta
+
+  const urgencyDelta = urgencyRank(b.node) - urgencyRank(a.node)
+  if (urgencyDelta !== 0) return urgencyDelta
+
+  const visitedDelta = visitedAtMs(a.node) - visitedAtMs(b.node)
+  if (visitedDelta !== 0) return visitedDelta
+
+  return a.node.sort_order - b.node.sort_order || a.node.created_at.localeCompare(b.node.created_at)
 }
 
 export function rankNow(
   nodes: NodeRecord[],
   placeId: string,
   today: Date,
-): { items: NodeRecord[]; overflow: number } {
-  const overdue: NodeRecord[] = []
-  const dueToday: NodeRecord[] = []
-  const nextSeven: NodeRecord[] = []
-  const highUndated: NodeRecord[] = []
+): { items: RankedNowItem[]; overflow: number } {
+  const overdue: RankedNowItem[] = []
+  const dueToday: RankedNowItem[] = []
+  const nextSeven: RankedNowItem[] = []
+  const highUndated: RankedNowItem[] = []
 
   for (const node of subtreeDescendants(nodes, placeId)) {
     if (node.completed) continue
     const until = daysUntil(node.date, today)
-    if (until !== null && until < 0) overdue.push(node)
-    else if (until === 0) dueToday.push(node)
-    else if (until !== null && until <= 7) nextSeven.push(node)
-    else if (node.urgency === 'high' && node.date === null) highUndated.push(node)
+    if (until !== null && until < 0) overdue.push({ node, bucket: 'overdue', daysUntil: until })
+    else if (until === 0) dueToday.push({ node, bucket: 'today', daysUntil: until })
+    else if (until !== null && until <= 7) nextSeven.push({ node, bucket: 'soon', daysUntil: until })
+    else if (node.urgency === 'high' && node.date === null) {
+      highUndated.push({ node, bucket: 'high', daysUntil: null })
+    }
   }
 
-  overdue.sort(compareDate)
-  nextSeven.sort(compareDate)
-  highUndated.sort((a, b) => a.sort_order - b.sort_order)
+  overdue.sort(compareRankedNow)
+  dueToday.sort(compareRankedNow)
+  nextSeven.sort(compareRankedNow)
+  highUndated.sort(compareRankedNow)
 
   const ranked = [...overdue, ...dueToday, ...nextSeven, ...highUndated]
   return {
@@ -117,18 +143,23 @@ function oldest(nodes: NodeRecord[]): NodeRecord | null {
 export function pickForgotten(
   nodes: NodeRecord[],
   placeId: string,
-  now: Date,
-  nowItemIds: Set<string>,
+  _now: Date,
+  _nowItemIds: Set<string>,
 ): NodeRecord | null {
   const children = getDirectChildren(nodes, placeId).filter((node) => !node.completed)
-  const staleAreas = children.filter((node) => isArea(nodes, node.id) && isStale(node, now))
-  const staleArea = oldest(staleAreas)
-  if (staleArea) return staleArea
+  if (children.length === 0) return null
 
-  const staleLeaves = children.filter(
-    (node) => !isArea(nodes, node.id) && isStale(node, now) && !nowItemIds.has(node.id),
+  return (
+    [...children].sort((a, b) => {
+      const visitedDelta = visitedAtMs(a) - visitedAtMs(b)
+      if (visitedDelta !== 0) return visitedDelta
+
+      const areaDelta = Number(isArea(nodes, b.id)) - Number(isArea(nodes, a.id))
+      if (areaDelta !== 0) return areaDelta
+
+      return a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at)
+    })[0] ?? null
   )
-  return oldest(staleLeaves)
 }
 
 export type PlaceChildView = {

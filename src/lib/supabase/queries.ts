@@ -31,8 +31,8 @@ export async function deleteNodeCascade(id: string): Promise<void> {
   if (error) throw error
 }
 
-export async function reparentNode(id: string, newParentId: string | null): Promise<void> {
-  await updateNode(id, { parent_id: newParentId })
+export async function reparentNode(id: string, newParentId: string | null, sortOrder: number): Promise<void> {
+  await updateNode(id, { parent_id: newParentId, sort_order: sortOrder })
 }
 
 export async function searchNodes(userId: string, query: string): Promise<NodeRecord[]> {

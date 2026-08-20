@@ -42,6 +42,8 @@ test('Now ranks overdue first with overflow', async ({ page }) => {
 
   const nowList = page.locator('section', { has: page.getByRole('heading', { name: 'Now' }) })
   await expect(nowList.getByRole('button').first()).toContainText('Pay bill')
+  await expect(nowList.getByText('Overdue')).toBeVisible()
+  await expect(nowList.getByText('Due today').first()).toBeVisible()
   await expect(nowList.getByText('1 more')).toBeVisible()
 })
 
@@ -75,7 +77,18 @@ test('Forgotten opens a stale area and visit persists across reload', async ({ p
   const homeEntered = page.waitForResponse(isVisitNodesWrite)
   await page.reload()
   await homeEntered
-  await expect(page.getByRole('button', { name: 'Forgotten Design' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Forgotten Work' })).toBeVisible()
+})
+
+test('Forgotten stays visible when all direct children were seen recently', async ({ page }) => {
+  await signIn(page)
+  await seedNodeTree([
+    { title: 'Newest', last_visited_at: new Date().toISOString() },
+    { title: 'Older recent', last_visited_at: new Date(Date.now() - 60_000).toISOString() },
+  ])
+
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Forgotten Older recent' })).toBeVisible()
 })
 
 test('loud dated leaves show due labels and undated compact leaves do not', async ({ page }) => {

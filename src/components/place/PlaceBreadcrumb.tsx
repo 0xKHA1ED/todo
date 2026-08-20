@@ -11,7 +11,7 @@ export function PlaceBreadcrumb() {
   const getAncestors = useNodeStore((state) => state.getAncestors)
   const currentPlaceId = useUIStore((state) => state.currentPlaceId)
   const enterPlace = useUIStore((state) => state.enterPlace)
-  const selectNode = useUIStore((state) => state.selectNode)
+  const openPanel = useUIStore((state) => state.openPanel)
 
   const root = nodes.find((node) => node.parent_id === null)
   const current = nodes.find((node) => node.id === currentPlaceId)
@@ -49,7 +49,7 @@ export function PlaceBreadcrumb() {
               aria-current={atRoot ? 'page' : undefined}
               className={cn(atRoot && 'font-semibold')}
               onClick={() => {
-                if (atRoot) selectNode(root.id)
+                if (atRoot) openPanel(root.id)
                 else enterPlace(root.id)
               }}
             >
@@ -68,7 +68,7 @@ export function PlaceBreadcrumb() {
                   aria-current={isCurrent ? 'page' : undefined}
                   className={cn('max-w-[12rem] truncate', isCurrent && 'font-semibold')}
                   onClick={() => {
-                    if (isCurrent) selectNode(node.id)
+                    if (isCurrent) openPanel(node.id)
                     else enterPlace(node.id)
                   }}
                 >

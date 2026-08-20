@@ -35,20 +35,18 @@ test('panel edits title, urgency, date, tags, and markdown content', async ({ pa
 
 test('area nodes open details from the canvas and breadcrumb', async ({ page }) => {
   await signIn(page)
-  await expect(page.getByText('Add a project')).toBeVisible()
-  await page.getByRole('button', { name: 'Add' }).click()
-  await expect(page.getByLabel('Title')).toBeFocused()
-
   const projectTitle = `Project ${Date.now()}`
-  await page.getByLabel('Title').fill(projectTitle)
-  await page.getByLabel('Title').blur()
-  await closePanel(page)
+  await seedNodeTree([
+    { title: projectTitle },
+    { title: `Child ${Date.now()}`, parentTitle: projectTitle },
+  ])
 
-  await page.getByRole('button', { name: `Forgotten ${projectTitle}` }).click()
-  await page.getByRole('button', { name: 'Add' }).click()
-  await page.getByLabel('Title').fill(`Child ${Date.now()}`)
-  await page.getByLabel('Title').blur()
-  await closePanel(page)
+  await page.reload()
+  await fitCanvas(page)
+  const projectNode = page.locator('.react-flow__node', { hasText: projectTitle })
+  await expect(projectNode).toBeVisible()
+  await projectNode.dblclick()
+  await expect(page.getByRole('navigation', { name: 'Breadcrumb', includeHidden: true })).toContainText(projectTitle)
 
   await page.getByRole('button', { name: 'Back' }).click()
   await fitCanvas(page)
@@ -57,7 +55,7 @@ test('area nodes open details from the canvas and breadcrumb', async ({ page }) 
   await expect(page.getByLabel('Title')).toHaveValue(projectTitle)
   await closePanel(page)
 
-  await page.getByRole('button', { name: `Forgotten ${projectTitle}` }).click()
+  await projectNode.dblclick()
   const breadcrumb = page.getByRole('navigation', { name: 'Breadcrumb', includeHidden: true })
   await breadcrumb.getByRole('button', { name: projectTitle }).click()
   await expect(page.getByLabel('Title')).toHaveValue(projectTitle)
@@ -84,7 +82,7 @@ test('panel move re-parents a subtree under any destination', async ({ page }) =
   await page.keyboard.press('Enter')
   await parentSaved
 
-  await expect(page.getByText('Inside Project B')).toBeVisible()
+  await expect(page.getByRole('dialog').last().getByText('Inside Project B', { exact: true })).toBeVisible()
   await page.reload()
   await fitCanvas(page)
 

@@ -47,7 +47,7 @@ test('Now ranks overdue first with overflow', async ({ page }) => {
   await expect(nowList.getByText('1 more')).toBeVisible()
 })
 
-test('Forgotten opens a stale area and visit persists across reload', async ({ page }) => {
+test('Forgotten opens a stale leaf and visit persists across reload', async ({ page }) => {
   await signIn(page)
   try {
     await seedNodeTree([
@@ -65,19 +65,20 @@ test('Forgotten opens a stale area and visit persists across reload', async ({ p
   }
 
   await page.reload()
-  const forgotten = page.getByRole('button', { name: 'Forgotten Design' })
+  const forgotten = page.getByRole('button', { name: 'Forgotten Logo' })
   await expect(forgotten).toBeVisible()
   await page.waitForResponse(isVisitNodesWrite, { timeout: 5_000 }).catch(() => {})
 
-  const designVisit = page.waitForResponse(isVisitNodesWrite)
+  const logoVisit = page.waitForResponse(isVisitNodesWrite)
   await forgotten.click()
+  await expect(page.getByLabel('Title')).toHaveValue('Logo')
   await expect(page.getByRole('navigation', { name: 'Breadcrumb', includeHidden: true })).toContainText('Design')
-  await designVisit
+  await logoVisit
 
   const homeEntered = page.waitForResponse(isVisitNodesWrite)
   await page.reload()
   await homeEntered
-  await expect(page.getByRole('button', { name: 'Forgotten Work' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Forgotten Standup' })).toBeVisible()
 })
 
 test('Forgotten stays visible when all direct children were seen recently', async ({ page }) => {

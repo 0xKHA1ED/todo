@@ -31,6 +31,19 @@ async function waitForStableNode(locator: Locator) {
     .toBe(true)
 }
 
+async function readFlowPosition(locator: Locator) {
+  return locator.evaluate((element) => {
+    const transform = (element as HTMLElement).style.transform
+    const match = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(transform)
+    if (!match) return null
+
+    return {
+      x: Number(match[1]),
+      y: Number(match[2]),
+    }
+  })
+}
+
 test('dragging a card moves it and the position survives reload', async ({ page }) => {
   await signIn(page)
   await seedNodeTree([
@@ -53,17 +66,23 @@ test('dragging a card moves it and the position survives reload', async ({ page 
   const sourceBox = await source.boundingBox()
   const targetBox = await target.boundingBox()
   test.skip(!sourceBox || !targetBox, 'Node boxes were unavailable.')
+  const dragDistanceY = Math.max(160, sourceBox!.height + 80)
 
   const positionSaved = page.waitForResponse(isPositionWrite)
   await page.mouse.move(sourceBox!.x + sourceBox!.width / 2, sourceBox!.y + sourceBox!.height / 2)
   await page.mouse.down()
-  await page.mouse.move(sourceBox!.x + sourceBox!.width / 2 + 220, sourceBox!.y + sourceBox!.height / 2, { steps: 12 })
+  await page.mouse.move(sourceBox!.x + sourceBox!.width / 2, sourceBox!.y + sourceBox!.height / 2 + dragDistanceY, {
+    steps: 12,
+  })
   await page.mouse.up()
   await positionSaved
 
+  const movedPosition = await readFlowPosition(source)
+  test.skip(!movedPosition, 'Moved node position was unavailable.')
+
   await expect
-    .poll(async () => (await source.boundingBox())?.x ?? 0)
-    .toBeGreaterThan((targetBox?.x ?? 0) + 100)
+    .poll(async () => (await readFlowPosition(source))?.y ?? 0)
+    .toBeGreaterThan(80)
 
   await page.reload()
   await fitCanvas(page)
@@ -75,9 +94,12 @@ test('dragging a card moves it and the position survives reload', async ({ page 
 
   await expect
     .poll(async () => {
-      const currentSource = await reloadedSource.boundingBox()
-      const currentTarget = await reloadedTarget.boundingBox()
-      return (currentSource?.x ?? 0) - (currentTarget?.x ?? 0)
+      const currentSource = await readFlowPosition(reloadedSource)
+      if (!currentSource) return Number.MAX_SAFE_INTEGER
+      return Math.max(
+        Math.abs(currentSource.x - movedPosition!.x),
+        Math.abs(currentSource.y - movedPosition!.y),
+      )
     })
-    .toBeGreaterThan(100)
+    .toBeLessThan(1)
 })

@@ -1,4 +1,4 @@
-import { memo, type MouseEvent } from 'react'
+import { memo, useMemo, type MouseEvent } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { PanelRightOpen } from 'lucide-react'
 import { getNodeSize } from '@/lib/flow/treeLayout'
@@ -24,10 +24,12 @@ function areaHints(data: NodeData): string {
 }
 
 export const CustomNode = memo(({ data }: NodeProps<FlowNode>) => {
-  const size = getNodeSize(data.density, data.attentionCount, data.title)
+  const size = useMemo(
+    () => getNodeSize(data.density, data.attentionCount, data.title),
+    [data.attentionCount, data.density, data.title],
+  )
   const isArea = data.isArea
-  const today = new Date()
-  const dueLabel = loudDueLabel(data.date, today)
+  const dueLabel = useMemo(() => loudDueLabel(data.date, new Date()), [data.date])
   const openPanel = useUIStore((state) => state.openPanel)
 
   function handleDetailsClick(event: MouseEvent<HTMLButtonElement>) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseChecklistProgress } from './checklistProgress'
+import { countChecklistItems, parseChecklistProgress } from './checklistProgress'
 
 const emptyDoc = JSON.stringify({
   type: 'doc',
@@ -74,5 +74,22 @@ describe('parseChecklistProgress', () => {
     })
 
     expect(parseChecklistProgress(doc)).toEqual({ total: 2, completed: 1 })
+  })
+})
+
+describe('countChecklistItems', () => {
+  it('counts task items directly from a parsed TipTap document object', () => {
+    const doc = JSON.parse(checklistDoc)
+    expect(countChecklistItems(doc)).toEqual({ total: 4, completed: 2 })
+  })
+
+  it('returns zeros for nullish or non-object input', () => {
+    expect(countChecklistItems(undefined)).toEqual({ total: 0, completed: 0 })
+    expect(countChecklistItems(null)).toEqual({ total: 0, completed: 0 })
+    expect(countChecklistItems('not an object')).toEqual({ total: 0, completed: 0 })
+  })
+
+  it('agrees with parseChecklistProgress on the same document', () => {
+    expect(countChecklistItems(JSON.parse(checklistDoc))).toEqual(parseChecklistProgress(checklistDoc))
   })
 })

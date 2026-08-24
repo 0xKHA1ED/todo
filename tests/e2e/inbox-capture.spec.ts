@@ -16,7 +16,7 @@ test('quick capture adds an inbox item and File moves it under a project', async
   await page.getByLabel('Title').blur()
   await page.keyboard.press('Escape')
 
-  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+N' : 'Control+Shift+N')
+  await page.keyboard.press('c')
   const dialog = page.getByRole('dialog', { name: 'Quick capture' })
   await expect(dialog).toBeVisible()
   await dialog.getByLabel('Title').fill('Bank form #errands')

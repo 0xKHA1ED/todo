@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a system Inbox under Home, a global Ctrl+Shift+N quick-capture dialog, and an Inbox list on the Home sidebar for triage.
+**Goal:** Add a system Inbox under Home, a global `C` quick-capture dialog, and an Inbox list on the Home sidebar for triage.
 
 **Architecture:** `system_role = 'inbox'` on one node per user, ensured in `fetchAllNodes`. `quickCapture.ts` parses `#tags` from titles. `InboxList` surfaces incomplete Inbox children at Home; File reuses extracted move-target logic.
 
@@ -349,7 +349,7 @@ git commit -m "feat: add quick capture dialog"
 
 ---
 
-### Task 6: Ctrl+Shift+N shortcut
+### Task 6: `C` quick-capture shortcut
 
 **Files:**
 - Modify: `src/hooks/useKeyboardNav.ts`
@@ -357,20 +357,21 @@ git commit -m "feat: add quick capture dialog"
 - [ ] **Step 1: Add handler before other shortcuts**
 
 ```ts
-if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'n') {
+if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key.toLowerCase() === 'c') {
+  if (shouldIgnoreShortcut(event)) return
   event.preventDefault()
-  useUIStore.getState().toggleQuickCapture(true)
+  setQuickCaptureOpen(true)
   return
 }
 ```
 
-Extend `shouldIgnoreShortcut` to also skip when quick capture dialog input is focused (dialog input is an `input`, already covered).
+The modifier guard keeps `Ctrl/Cmd+C` (copy) working, and `shouldIgnoreShortcut` skips inputs, TipTap, and the command palette. `Ctrl+Shift+N` was rejected because Chrome/Edge use it for a new incognito window.
 
 - [ ] **Step 2: Commit**
 
 ```bash
 git add src/hooks/useKeyboardNav.ts
-git commit -m "feat: bind Ctrl+Shift+N to quick capture"
+git commit -m "feat: bind C to quick capture"
 ```
 
 ---
@@ -433,7 +434,7 @@ git commit -m "feat: show Inbox on Home with File triage"
 ```ts
 test('quick capture adds to Inbox and File moves it to a project', async ({ page }) => {
   await signIn(page)
-  await page.keyboard.press('Control+Shift+N')
+  await page.keyboard.press('c')
   await page.getByPlaceholder(/mind/i).fill('Bank errand #errands')
   await page.keyboard.press('Enter')
   await expect(page.getByRole('button', { name: 'Bank errand' })).toBeVisible()
@@ -448,7 +449,7 @@ test('quick capture adds to Inbox and File moves it to a project', async ({ page
 })
 ```
 
-- [ ] **Step 2: README** — document Inbox, Ctrl+Shift+N, `#tags`, migration `004`.
+- [ ] **Step 2: README** — document Inbox, `C` quick capture, `#tags`, migration `004`.
 
 - [ ] **Step 3: Run `npm test` and `npm run test:e2e tests/e2e/inbox-capture.spec.ts`**
 

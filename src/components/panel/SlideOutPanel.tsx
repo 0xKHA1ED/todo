@@ -6,7 +6,9 @@ import { useUIStore } from '@/lib/store/useUIStore'
 import { NodeDetailForm } from './NodeDetailForm'
 
 export function SlideOutPanel() {
-  const { isPanelOpen, selectedNodeId, closePanel } = useUIStore()
+  const isPanelOpen = useUIStore((state) => state.isPanelOpen)
+  const selectedNodeId = useUIStore((state) => state.selectedNodeId)
+  const closePanel = useUIStore((state) => state.closePanel)
   const node = useNodeStore((state) => state.nodes.find((candidate) => candidate.id === selectedNodeId))
 
   return (

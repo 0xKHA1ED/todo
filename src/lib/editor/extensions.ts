@@ -16,6 +16,14 @@ const lowlight = createLowlight()
 
 const markdownTaskListInputRegex = /^\s*-\s+\[([ xX])?\]\s$/
 
+const MarkdownFriendlyTaskList = TaskList.extend({
+  addKeyboardShortcuts() {
+    return {
+      'Mod-Shift-9': () => this.editor.commands.toggleTaskList(),
+    }
+  },
+})
+
 const MarkdownFriendlyTaskItem = TaskItem.extend({
   addInputRules() {
     return [
@@ -38,7 +46,7 @@ export const editorExtensions = [
   TableRow,
   TableHeader,
   TableCell,
-  TaskList,
+  MarkdownFriendlyTaskList,
   MarkdownFriendlyTaskItem.configure({ nested: true }),
   Link.configure({ openOnClick: false, autolink: true }),
   Image,

@@ -100,7 +100,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_nodes_user_inbox
 
 ## Quick capture
 
-- **Shortcut**: `Ctrl+Shift+N` (and `Meta+Shift+N` on Mac) from the map screen. Works even when the slide-out panel is closed. Does not fire when focus is in inputs, TipTap, or command palette (same `shouldIgnoreShortcut` rules as other canvas shortcuts).
+- **Shortcut**: `C` (single key) from the map screen. Works even when the slide-out panel is closed. Does not fire when any of Ctrl/Cmd/Alt is held (so `Ctrl/Cmd+C` copy is preserved) or when focus is in inputs, TipTap, or command palette (same `shouldIgnoreShortcut` rules as other canvas shortcuts). Ctrl+Shift+N was rejected because Chrome/Edge reserve it for a new incognito window.
 - **UI**: modal dialog (`QuickCaptureDialog`) with a single title field, primary **Add to Inbox**, secondary Cancel. On submit: `createNode({ parent_id: inboxId, title })`, close dialog, toast `Captured`.
 - **Title parsing** (optional, deterministic): trailing `#word` tokens become tags (same rules as `parseTags`); stripped from title. Example: `Bank form #errands` → title `Bank form`, tags `['errands']`. No `@place` auto-move in v1.
 
@@ -130,7 +130,7 @@ Inbox is an area card on Home like any other child when you are at Home (density
 
 - Unit: `getInboxId(nodes)`, `parseQuickCaptureTitle(title)`.
 - Unit: `listInboxItems(nodes, inboxId)` ordering and cap.
-- E2E: Ctrl+Shift+N capture, item appears in Inbox list at Home; File moves item under another project; item leaves Inbox list.
+- E2E: `C` capture, item appears in Inbox list at Home; File moves item under another project; item leaves Inbox list.
 
 ---
 
@@ -202,4 +202,4 @@ Picking a row: `enterPlace(item.parent_id)`, `selectNode(item.id)`, `openPanel(i
 
 # README updates (after all slices)
 
-Document: Inbox ritual, Ctrl+Shift+N, `#tag` in quick capture, four context tags, checklist toolbar and `Mod+Shift+9`, migration `004`.
+Document: Inbox ritual, `C` quick capture, `#tag` in quick capture, four context tags, checklist toolbar and `Mod+Shift+9`, migration `004`.

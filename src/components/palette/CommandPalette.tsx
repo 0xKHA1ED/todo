@@ -42,7 +42,12 @@ export function CommandPalette() {
   }
 
   return (
-    <CommandDialog open={isCommandPaletteOpen} onOpenChange={(open) => toggleCommandPalette(open)}>
+    <CommandDialog
+      open={isCommandPaletteOpen}
+      onOpenChange={(open) => toggleCommandPalette(open)}
+      title="Command palette"
+      description="Search titles and descriptions, then jump to a node."
+    >
       <CommandInput placeholder="Search titles and descriptions..." value={query} onValueChange={setQuery} />
       <CommandList>
         <CommandEmpty>No matching nodes.</CommandEmpty>

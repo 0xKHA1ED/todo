@@ -11,23 +11,12 @@ type TipTapNode = {
   content?: TipTapNode[]
 }
 
-export function parseChecklistProgress(description: string | null | undefined): ChecklistProgress {
-  if (!description) {
-    return { total: 0, completed: 0 }
-  }
-
-  let documentNode: TipTapNode
-  try {
-    documentNode = JSON.parse(description) as TipTapNode
-  } catch {
-    return { total: 0, completed: 0 }
-  }
-
+export function countChecklistItems(documentNode: unknown): ChecklistProgress {
   let total = 0
   let completed = 0
 
   function walk(node: TipTapNode | undefined) {
-    if (!node) return
+    if (!node || typeof node !== 'object') return
 
     if (node.type === 'taskItem') {
       total += 1
@@ -41,7 +30,22 @@ export function parseChecklistProgress(description: string | null | undefined): 
     }
   }
 
-  walk(documentNode)
+  walk(documentNode as TipTapNode)
 
   return { total, completed }
+}
+
+export function parseChecklistProgress(description: string | null | undefined): ChecklistProgress {
+  if (!description) {
+    return { total: 0, completed: 0 }
+  }
+
+  let documentNode: TipTapNode
+  try {
+    documentNode = JSON.parse(description) as TipTapNode
+  } catch {
+    return { total: 0, completed: 0 }
+  }
+
+  return countChecklistItems(documentNode)
 }

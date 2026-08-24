@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { MindmapCanvas } from '@/components/canvas/MindmapCanvas'
 import { CanvasToolbar } from '@/components/canvas/CanvasToolbar'
 import { QuickCaptureDialog } from '@/components/capture/QuickCaptureDialog'
@@ -73,48 +73,75 @@ export function PlaceScreen() {
     }
   }, [currentPlaceId, markVisited, toast])
 
-  const clock = new Date()
-  const root = nodes.find((node) => node.parent_id === null) ?? null
-  const current = nodes.find((node) => node.id === currentPlaceId)
-  const isRootPlace = Boolean(current && current.parent_id === null)
-  const inboxId = getInboxId(nodes)
-  const inboxItems = inboxId ? listInboxItems(nodes, inboxId) : { items: [], overflow: 0 }
-  const activeLens = isRootPlace && activeLensId ? getLensById(activeLensId) ?? null : null
-  const lensRanked = root && activeLens ? rankLensItems(nodes, root.id, activeLens.id, clock) : { items: [], overflow: 0 }
-  const lensMode = Boolean(activeLens)
+  const {
+    isRootPlace,
+    inboxId,
+    inboxItems,
+    activeLens,
+    lensRanked,
+    lensMode,
+    nowRanked,
+    forgotten,
+    projectViewCount,
+    forgottenStaleDays,
+    forgottenPath,
+  } = useMemo(() => {
+    const clock = new Date()
+    const rootNode = nodes.find((node) => node.parent_id === null) ?? null
+    const currentNode = nodes.find((node) => node.id === currentPlaceId) ?? null
+    const atRoot = Boolean(currentNode && currentNode.parent_id === null)
+    const foundInboxId = getInboxId(nodes)
+    const inbox = foundInboxId ? listInboxItems(nodes, foundInboxId) : { items: [], overflow: 0 }
+    const lens = atRoot && activeLensId ? getLensById(activeLensId) ?? null : null
+    const lensItems = rootNode && lens ? rankLensItems(nodes, rootNode.id, lens.id, clock) : { items: [], overflow: 0 }
 
-  const nowRanked = currentPlaceId
-    ? rankNow(nodes, currentPlaceId, clock)
-    : { items: [], overflow: 0 }
+    const now = currentPlaceId ? rankNow(nodes, currentPlaceId, clock) : { items: [], overflow: 0 }
+    const forgottenNode = currentPlaceId
+      ? pickForgotten(nodes, currentPlaceId, clock, new Set(now.items.map((item) => item.node.id)))
+      : null
 
-  const forgotten = currentPlaceId
-    ? pickForgotten(nodes, currentPlaceId, clock, new Set(nowRanked.items.map((item) => item.node.id)))
-    : null
+    const byId = new Map(nodes.map((node) => [node.id, node]))
+    const childViews = currentPlaceId ? visibleChildren(nodes, currentPlaceId, showDone, clock, clock) : []
+    const projects = atRoot ? childViews.filter((view) => view.node.system_role !== 'inbox') : childViews
 
-  const nodesById = new Map(nodes.map((node) => [node.id, node]))
-  const childViews = currentPlaceId ? visibleChildren(nodes, currentPlaceId, showDone, clock, clock) : []
-  const projectViews = isRootPlace ? childViews.filter((view) => view.node.system_role !== 'inbox') : childViews
-  const forgottenStaleDays = forgotten
-    ? forgotten.last_visited_at === null
-      ? -1
-      : Math.max(0, Math.floor((clock.getTime() - Date.parse(forgotten.last_visited_at)) / 86_400_000))
-    : null
-  const forgottenPath = forgotten
-    ? (() => {
-        const path: string[] = []
-        let currentId = forgotten.parent_id
+    const staleDays = forgottenNode
+      ? forgottenNode.last_visited_at === null
+        ? -1
+        : Math.max(0, Math.floor((clock.getTime() - Date.parse(forgottenNode.last_visited_at)) / 86_400_000))
+      : null
 
-        while (currentId) {
-          const currentNode = nodesById.get(currentId)
-          if (!currentNode) break
-          if (currentNode.parent_id !== null) path.unshift(currentNode.title)
-          currentId = currentNode.parent_id
-        }
+    const path = forgottenNode
+      ? (() => {
+          const segments: string[] = []
+          let currentId = forgottenNode.parent_id
 
-        return path.join(' / ') || 'Home'
-      })()
-    : null
-  const showEmptyPrompt = !lensMode && !loading && Boolean(currentPlaceId) && projectViews.length === 0
+          while (currentId) {
+            const node = byId.get(currentId)
+            if (!node) break
+            if (node.parent_id !== null) segments.unshift(node.title)
+            currentId = node.parent_id
+          }
+
+          return segments.join(' / ') || 'Home'
+        })()
+      : null
+
+    return {
+      isRootPlace: atRoot,
+      inboxId: foundInboxId,
+      inboxItems: inbox,
+      activeLens: lens,
+      lensRanked: lensItems,
+      lensMode: Boolean(lens),
+      nowRanked: now,
+      forgotten: forgottenNode,
+      projectViewCount: projects.length,
+      forgottenStaleDays: staleDays,
+      forgottenPath: path,
+    }
+  }, [activeLensId, currentPlaceId, nodes, showDone])
+
+  const showEmptyPrompt = !lensMode && !loading && Boolean(currentPlaceId) && projectViewCount === 0
 
   function handleNowPick(id: string) {
     const item = nodes.find((node) => node.id === id)

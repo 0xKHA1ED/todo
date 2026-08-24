@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import { EditorToolbar } from '@/components/panel/EditorToolbar'
-import { parseChecklistProgress, type ChecklistProgress } from '@/lib/editor/checklistProgress'
+import { countChecklistItems, parseChecklistProgress, type ChecklistProgress } from '@/lib/editor/checklistProgress'
 import { editorExtensions } from '@/lib/editor/extensions'
 import { useNodeStore } from '@/lib/store/useNodeStore'
 import { defaultEditorContent } from '@/lib/utils'
@@ -34,9 +34,20 @@ export function MarkdownEditor({
   const debounceRef = useRef<number | null>(null)
   const pendingContentRef = useRef<string | null>(null)
   const pendingChecklistProgressRef = useRef<ChecklistProgress | null>(null)
+  const lastEmittedProgressRef = useRef<ChecklistProgress | null>(null)
   const completedRef = useRef(initialCompleted)
   const hydratedNodeIdRef = useRef<string | null>(null)
   const parsedContent = useMemo(() => parseContent(initialContent), [initialContent])
+
+  const emitChecklistProgress = useCallback(
+    (progress: ChecklistProgress) => {
+      const last = lastEmittedProgressRef.current
+      if (last && last.total === progress.total && last.completed === progress.completed) return
+      lastEmittedProgressRef.current = progress
+      onChecklistProgressChange?.(progress)
+    },
+    [onChecklistProgressChange],
+  )
 
   const flushPendingUpdate = useCallback(async (targetNodeId: string) => {
     const content = pendingContentRef.current
@@ -78,12 +89,13 @@ export function MarkdownEditor({
       },
     },
     onUpdate({ editor: activeEditor }) {
-      const content = JSON.stringify(activeEditor.getJSON())
-      const progress = parseChecklistProgress(content)
+      const json = activeEditor.getJSON()
+      const content = JSON.stringify(json)
+      const progress = countChecklistItems(json)
 
       pendingContentRef.current = content
       pendingChecklistProgressRef.current = progress
-      onChecklistProgressChange?.(progress)
+      emitChecklistProgress(progress)
 
       if (debounceRef.current) window.clearTimeout(debounceRef.current)
       debounceRef.current = window.setTimeout(() => {
@@ -97,8 +109,9 @@ export function MarkdownEditor({
   }, [initialCompleted, nodeId])
 
   useEffect(() => {
-    onChecklistProgressChange?.(parseChecklistProgress(initialContent))
-  }, [initialContent, onChecklistProgressChange])
+    lastEmittedProgressRef.current = null
+    emitChecklistProgress(parseChecklistProgress(initialContent))
+  }, [emitChecklistProgress, initialContent])
 
   useEffect(() => {
     if (!editor) return

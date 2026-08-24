@@ -121,4 +121,32 @@ describe('buildFlowGraph', () => {
       completionPercent: 50,
     })
   })
+
+  it('merges a parent\u2019s own checklist steps with its child-node progress', () => {
+    const checklistDescription = JSON.stringify({
+      type: 'doc',
+      content: [
+        {
+          type: 'taskList',
+          content: [
+            { type: 'taskItem', attrs: { checked: true }, content: [{ type: 'paragraph' }] },
+            { type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph' }] },
+          ],
+        },
+      ],
+    })
+
+    const progress = buildProgressLookup([
+      home,
+      node({ id: 'area', title: 'Bank', description: checklistDescription }),
+      node({ id: 'child', title: 'Deposit', parent_id: 'area', completed: true }),
+    ])
+
+    // 1 child node (completed) + 2 checklist steps (1 checked) => 3 total, 2 done
+    expect(progress.get('area')).toEqual({
+      totalSubtaskCount: 3,
+      completedSubtaskCount: 2,
+      completionPercent: 67,
+    })
+  })
 })

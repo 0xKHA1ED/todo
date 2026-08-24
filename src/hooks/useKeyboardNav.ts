@@ -58,7 +58,12 @@ export function useKeyboardNav() {
         return
       }
 
-      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'n') {
+      if (
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        event.key.toLowerCase() === 'c'
+      ) {
         if (shouldIgnoreShortcut(event)) return
         event.preventDefault()
         setQuickCaptureOpen(true)

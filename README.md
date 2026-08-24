@@ -7,7 +7,7 @@ A personal productivity app that treats life as nested places. You always stand 
 ## Features
 
 - **Place UI** — Opening the app always stands you at **Home** (the hidden root). Nested descendants stay packed inside child area cards until you enter that place.
-- **Inbox ritual** — Every user gets a dedicated Inbox place under Home. Press **Ctrl+Shift+N** / **Cmd+Shift+N** from the map to quick-capture a task from anywhere, optionally parsing trailing `#tags`, then file it later.
+- **Inbox ritual** — Every user gets a dedicated Inbox place under Home. Press **C** from the map to quick-capture a task from anywhere, optionally parsing trailing `#tags`, then file it later.
 - **Now** — Up to **5** urgent tasks from the current place’s subtree (overdue, due today, next 7 days, then high-urgency undated). Extra matches show as a quiet “N more” count.
 - **Forgotten** — Exactly one stale child of the current place. Prefers an area whose `last_visited_at` is null or older than **14 days**; otherwise the oldest stale leaf not already in Now. Hidden when nothing is stale.
 - **Context lenses** — At Home, toggle **Errands**, **At computer**, **Calls**, or **At home** to see incomplete tagged leaves across the full tree without opening a second task view.
@@ -16,7 +16,7 @@ A personal productivity app that treats life as nested places. You always stand 
 - **Inline checklists** — TipTap descriptions support checklist blocks from the toolbar or **Mod+Shift+9**, live step counts in the panel, `- [ ]` markdown conversion, and auto-complete when every step is checked.
 - TipTap WYSIWYG rich-text description per node (Notion-style)
 - Slide-out detail panel without leaving the place
-- Keyboard: **Tab** on a selected non-root node creates a child and enters that place; **Enter** enters an area (has children) or opens the panel; **Delete** deletes (not Backspace)
+- Keyboard: **C** opens quick capture from anywhere; **Tab** on a selected non-root node creates a child and enters that place; **Enter** enters an area (has children) or opens the panel; **Delete** deletes (not Backspace)
 - Drag-and-drop re-parenting among visible children of the current place (entire subtree moves with the node)
 - Command palette (**Ctrl+K**) — searches titles and markdown content, then jumps to the hit’s **parent place** (not viewport pan)
 - Email/Password auth via Supabase Auth with Row-Level Security
@@ -271,13 +271,13 @@ src/
 ├── hooks/                # useCommandSearch, useKeyboardNav
 ├── lib/
 │   ├── editor/           # TipTap extensions
-│   ├── flow/             # Dagre layout engine helpers
+│   ├── flow/             # Compact tree layout + progress rollup helpers
 │   ├── place/            # Now, Forgotten, density, visit targets
 │   ├── store/            # Zustand stores (auth, nodes, UI)
 │   └── supabase/         # Supabase client + CRUD queries
 └── types/                # Shared TypeScript types
 supabase/
-├── migrations/           # SQL migration files (001, 002, 003)
+├── migrations/           # SQL migration files (001, 002, 003, 004)
 └── seed.sql              # Notes on seeding
 tests/
 └── e2e/                  # Playwright test specs

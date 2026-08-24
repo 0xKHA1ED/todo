@@ -58,6 +58,38 @@
     @apply my-3 list-disc pl-6;
   }
 
+  .tiptap-wrapper .tiptap ul[data-type='taskList'] {
+    @apply my-3 list-none pl-0;
+  }
+
+  .tiptap-wrapper .tiptap ul[data-type='taskList'] li {
+    @apply my-2 flex items-start gap-3;
+  }
+
+  .tiptap-wrapper .tiptap ul[data-type='taskList'] li > label {
+    @apply mt-1 flex shrink-0 items-center;
+  }
+
+  .tiptap-wrapper .tiptap ul[data-type='taskList'] li > label > input {
+    @apply h-4 w-4 cursor-pointer rounded border border-border accent-[hsl(var(--primary))];
+  }
+
+  .tiptap-wrapper .tiptap ul[data-type='taskList'] li > label > span {
+    @apply sr-only;
+  }
+
+  .tiptap-wrapper .tiptap ul[data-type='taskList'] li > div {
+    @apply min-w-0 flex-1;
+  }
+
+  .tiptap-wrapper .tiptap ul[data-type='taskList'] li[data-checked='true'] > div {
+    @apply text-muted-foreground line-through;
+  }
+
+  .tiptap-wrapper .tiptap ul[data-type='taskList'] ul[data-type='taskList'] {
+    @apply mt-2 pl-6;
+  }
+
   .tiptap-wrapper .tiptap ol {
     @apply my-3 list-decimal pl-6;
   }

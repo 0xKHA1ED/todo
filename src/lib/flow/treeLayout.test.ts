@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { buildFlowGraph, getNodeSize } from './treeLayout'
+import { buildFlowGraph, buildProgressLookup, getNodeSize } from './treeLayout'
 import type { NodeRecord, Urgency } from '@/types'
 
 function node(partial: Partial<NodeRecord> & Pick<NodeRecord, 'id' | 'title'>): NodeRecord {
   return {
     user_id: 'user',
     parent_id: 'home',
+    system_role: null,
     completed: false,
     urgency: 'normal' as Urgency,
     date: null,
@@ -93,5 +94,31 @@ describe('buildFlowGraph', () => {
 
     expect(intense.width).toBeGreaterThan(quiet.width)
     expect(intense.height).toBeGreaterThan(quiet.height)
+  })
+
+  it('includes checklist progress for leaves with no child nodes', () => {
+    const checklistDescription = JSON.stringify({
+      type: 'doc',
+      content: [
+        {
+          type: 'taskList',
+          content: [
+            { type: 'taskItem', attrs: { checked: true }, content: [{ type: 'paragraph' }] },
+            { type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph' }] },
+          ],
+        },
+      ],
+    })
+
+    const progress = buildProgressLookup([
+      home,
+      node({ id: 'leaf', title: 'Bank', description: checklistDescription }),
+    ])
+
+    expect(progress.get('leaf')).toEqual({
+      totalSubtaskCount: 2,
+      completedSubtaskCount: 1,
+      completionPercent: 50,
+    })
   })
 })

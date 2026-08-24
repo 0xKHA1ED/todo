@@ -6,6 +6,7 @@ function node(partial: Partial<NodeRecord> & Pick<NodeRecord, 'id' | 'title'>): 
   return {
     user_id: 'user',
     parent_id: 'home',
+    system_role: null,
     completed: false,
     urgency: 'normal' as Urgency,
     date: null,
@@ -197,6 +198,19 @@ describe('visibleChildren', () => {
     expect(byTitle['Paint']).toBe('compact')
     expect(byTitle.Marketing).toBe('area')
     expect(views.find((view) => view.node.title === 'Marketing')?.insideCount).toBe(1)
+  })
+
+  it('treats Inbox as an area even when it has no children yet', () => {
+    const views = visibleChildren(
+      [home, node({ id: 'inbox', title: 'Inbox', system_role: 'inbox' })],
+      'home',
+      false,
+      today,
+      now,
+    )
+
+    expect(views[0]?.isArea).toBe(true)
+    expect(views[0]?.density).toBe('area')
   })
 
   it('treats a high-urgency undated leaf as medium', () => {

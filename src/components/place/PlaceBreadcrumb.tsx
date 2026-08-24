@@ -2,6 +2,7 @@
 
 import { ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { getLensById } from '@/lib/place/contextLenses'
 import { useNodeStore } from '@/lib/store/useNodeStore'
 import { useUIStore } from '@/lib/store/useUIStore'
 import { cn } from '@/lib/utils'
@@ -10,12 +11,15 @@ export function PlaceBreadcrumb() {
   const nodes = useNodeStore((state) => state.nodes)
   const getAncestors = useNodeStore((state) => state.getAncestors)
   const currentPlaceId = useUIStore((state) => state.currentPlaceId)
+  const activeLensId = useUIStore((state) => state.activeLensId)
+  const setActiveLensId = useUIStore((state) => state.setActiveLensId)
   const enterPlace = useUIStore((state) => state.enterPlace)
   const openPanel = useUIStore((state) => state.openPanel)
 
   const root = nodes.find((node) => node.parent_id === null)
   const current = nodes.find((node) => node.id === currentPlaceId)
   const atRoot = !current || current.parent_id === null
+  const activeLens = atRoot && activeLensId ? getLensById(activeLensId) ?? null : null
   const parentId = current?.parent_id ?? null
   const ancestors = currentPlaceId ? getAncestors(currentPlaceId) : []
   const trail = [
@@ -46,17 +50,26 @@ export function PlaceBreadcrumb() {
               type="button"
               size="sm"
               variant="ghost"
-              aria-current={atRoot ? 'page' : undefined}
-              className={cn(atRoot && 'font-semibold')}
+              aria-current={atRoot && !activeLens ? 'page' : undefined}
+              className={cn(atRoot && !activeLens && 'font-semibold')}
               onClick={() => {
-                if (atRoot) openPanel(root.id)
+                if (activeLens) setActiveLensId(null)
+                else if (atRoot) openPanel(root.id)
                 else enterPlace(root.id)
               }}
             >
               Home
             </Button>
           </li>
-          {trail.map((node, index) => {
+          {activeLens && (
+            <li className="flex min-w-0 items-center gap-0.5">
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              <Button type="button" size="sm" variant="ghost" aria-current="page" className="font-semibold" disabled>
+                {activeLens.label}
+              </Button>
+            </li>
+          )}
+          {!activeLens && trail.map((node, index) => {
             const isCurrent = index === trail.length - 1
             return (
               <li key={node.id} className="flex min-w-0 items-center gap-0.5">

@@ -25,7 +25,7 @@ function areaHints(data: NodeData): string {
 
 export const CustomNode = memo(({ data }: NodeProps<FlowNode>) => {
   const size = getNodeSize(data.density, data.attentionCount, data.title)
-  const isArea = data.insideCount > 0
+  const isArea = data.isArea
   const today = new Date()
   const dueLabel = loudDueLabel(data.date, today)
   const openPanel = useUIStore((state) => state.openPanel)

@@ -44,6 +44,17 @@ async function createAuthenticatedE2EClient() {
   return { supabase, userId }
 }
 
+export async function requireSystemRoleMigration() {
+  const { supabase, userId } = await createAuthenticatedE2EClient()
+
+  const { error } = await supabase.from('nodes').select('system_role').eq('user_id', userId).limit(1)
+  await supabase.auth.signOut()
+
+  if (error) {
+    test.skip(true, `Apply supabase/migrations/004_add_system_role.sql before running this test. BLOCKED: ${JSON.stringify(error)}`)
+  }
+}
+
 async function resetE2EState() {
   const { supabase, userId } = await createAuthenticatedE2EClient()
 

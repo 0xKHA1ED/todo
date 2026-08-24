@@ -3,12 +3,18 @@
 import { useEffect } from 'react'
 import { MindmapCanvas } from '@/components/canvas/MindmapCanvas'
 import { CanvasToolbar } from '@/components/canvas/CanvasToolbar'
+import { QuickCaptureDialog } from '@/components/capture/QuickCaptureDialog'
 import { CommandPalette } from '@/components/palette/CommandPalette'
 import { SlideOutPanel } from '@/components/panel/SlideOutPanel'
 import { ForgottenCard } from '@/components/place/ForgottenCard'
+import { InboxList } from '@/components/place/InboxList'
+import { LensList } from '@/components/place/LensList'
+import { LensPicker } from '@/components/place/LensPicker'
 import { NowList } from '@/components/place/NowList'
 import { PlaceBreadcrumb } from '@/components/place/PlaceBreadcrumb'
 import { useKeyboardNav } from '@/hooks/useKeyboardNav'
+import { getInboxId, listInboxItems } from '@/lib/inbox/inboxModel'
+import { getLensById, rankLensItems } from '@/lib/place/contextLenses'
 import { pickForgotten, rankNow, visibleChildren } from '@/lib/place/placeModel'
 import { useNodeStore } from '@/lib/store/useNodeStore'
 import { useUIStore } from '@/lib/store/useUIStore'
@@ -26,6 +32,10 @@ export function PlaceScreen() {
   const resetPlace = useUIStore((state) => state.resetPlace)
   const selectNode = useUIStore((state) => state.selectNode)
   const openPanel = useUIStore((state) => state.openPanel)
+  const isQuickCaptureOpen = useUIStore((state) => state.isQuickCaptureOpen)
+  const setQuickCaptureOpen = useUIStore((state) => state.setQuickCaptureOpen)
+  const activeLensId = useUIStore((state) => state.activeLensId)
+  const setActiveLensId = useUIStore((state) => state.setActiveLensId)
 
   useKeyboardNav()
 
@@ -64,8 +74,14 @@ export function PlaceScreen() {
   }, [currentPlaceId, markVisited, toast])
 
   const clock = new Date()
+  const root = nodes.find((node) => node.parent_id === null) ?? null
   const current = nodes.find((node) => node.id === currentPlaceId)
   const isRootPlace = Boolean(current && current.parent_id === null)
+  const inboxId = getInboxId(nodes)
+  const inboxItems = inboxId ? listInboxItems(nodes, inboxId) : { items: [], overflow: 0 }
+  const activeLens = isRootPlace && activeLensId ? getLensById(activeLensId) ?? null : null
+  const lensRanked = root && activeLens ? rankLensItems(nodes, root.id, activeLens.id, clock) : { items: [], overflow: 0 }
+  const lensMode = Boolean(activeLens)
 
   const nowRanked = currentPlaceId
     ? rankNow(nodes, currentPlaceId, clock)
@@ -97,7 +113,7 @@ export function PlaceScreen() {
         return path.join(' / ') || 'Home'
       })()
     : null
-  const showEmptyPrompt = !loading && Boolean(currentPlaceId) && childViews.length === 0
+  const showEmptyPrompt = !lensMode && !loading && Boolean(currentPlaceId) && childViews.length === 0
 
   function handleNowPick(id: string) {
     const item = nodes.find((node) => node.id === id)
@@ -119,23 +135,66 @@ export function PlaceScreen() {
     openPanel(forgotten.id)
   }
 
+  function handleLensPick(nodeId: string) {
+    const item = nodes.find((node) => node.id === nodeId)
+    if (!item) return
+
+    if (item.parent_id) {
+      enterPlace(item.parent_id)
+      window.requestAnimationFrame(() => {
+        selectNode(item.id)
+        openPanel(item.id)
+      })
+      return
+    }
+
+    selectNode(item.id)
+    openPanel(item.id)
+  }
+
   return (
     <div className="grid h-screen w-screen grid-cols-[20rem_minmax(0,1fr)] overflow-hidden bg-[linear-gradient(135deg,rgba(239,244,247,1),rgba(228,236,244,0.96)_48%,rgba(220,231,239,1))]">
       <aside className="relative flex w-80 flex-col gap-4 overflow-y-auto border-r border-white/35 bg-white/45 p-4 backdrop-blur-2xl">
-        <NowList items={nowRanked.items} overflow={nowRanked.overflow} onPick={handleNowPick} />
-        <ForgottenCard
-          node={forgotten}
-          staleDays={forgottenStaleDays}
-          pathLabel={forgottenPath}
-          onOpen={handleForgottenOpen}
-        />
+        {lensMode && activeLens ? (
+          <LensList lens={activeLens} items={lensRanked.items} overflow={lensRanked.overflow} onPick={handleLensPick} />
+        ) : (
+          <>
+            {isRootPlace && inboxId && inboxItems.items.length > 0 && (
+              <InboxList items={inboxItems.items} overflow={inboxItems.overflow} onEnterInbox={() => enterPlace(inboxId)} />
+            )}
+            <NowList items={nowRanked.items} overflow={nowRanked.overflow} onPick={handleNowPick} />
+            <ForgottenCard
+              node={forgotten}
+              staleDays={forgottenStaleDays}
+              pathLabel={forgottenPath}
+              onOpen={handleForgottenOpen}
+            />
+          </>
+        )}
       </aside>
       <div className="relative min-h-0 min-w-0">
-        <MindmapCanvas />
+        {lensMode ? (
+          <div className="absolute inset-0 flex items-center justify-center p-8">
+            <div className="max-w-xl rounded-[2rem] border border-white/80 bg-white/86 px-8 py-7 text-center shadow-[0_28px_90px_-50px_rgba(15,23,42,0.8)] backdrop-blur-xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">Lens mode</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">{activeLens?.label} across your life</h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                Pick a task from the left to jump into its parent place without reopening the full map.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <MindmapCanvas />
+        )}
         <div className="pointer-events-none absolute left-4 top-4 z-20 flex max-w-[calc(100%-2rem)] flex-col gap-3">
           <div className="pointer-events-auto">
             <PlaceBreadcrumb />
           </div>
+          {isRootPlace && (
+            <div className="pointer-events-auto">
+              <LensPicker activeLensId={activeLensId} onToggle={setActiveLensId} />
+            </div>
+          )}
           <div className="pointer-events-auto">
             <CanvasToolbar loading={loading} error={error} />
           </div>
@@ -149,6 +208,7 @@ export function PlaceScreen() {
         )}
         <SlideOutPanel />
         <CommandPalette />
+        <QuickCaptureDialog open={isQuickCaptureOpen} onOpenChange={setQuickCaptureOpen} />
       </div>
     </div>
   )

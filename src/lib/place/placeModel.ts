@@ -123,7 +123,8 @@ export function rankNow(
 export const STALE_MS = 14 * 24 * 60 * 60 * 1000
 
 export function isArea(nodes: NodeRecord[], nodeId: string): boolean {
-  return nodes.some((node) => node.parent_id === nodeId)
+  const current = nodes.find((node) => node.id === nodeId)
+  return current?.system_role === 'inbox' || nodes.some((node) => node.parent_id === nodeId)
 }
 
 export function isStale(node: NodeRecord, now: Date): boolean {
@@ -178,6 +179,7 @@ export function pickForgotten(
 export type PlaceChildView = {
   node: NodeRecord
   density: NodeDensity
+  isArea: boolean
   insideCount: number
   dueCount: number
   attentionCount: number
@@ -245,7 +247,7 @@ export function visibleChildren(
 
     if (!showDone) {
       if (child.completed) continue
-      if (area && descendants.every((node) => node.completed)) continue
+      if (area && descendants.length > 0 && descendants.every((node) => node.completed)) continue
     }
 
     let density: NodeDensity
@@ -260,6 +262,7 @@ export function visibleChildren(
     views.push({
       node: child,
       density,
+      isArea: area,
       insideCount: descendants.length,
       dueCount: childDueCount(child, descendants, today),
       attentionCount: childAttentionCount(child, descendants, today),

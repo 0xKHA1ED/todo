@@ -7,16 +7,30 @@ A personal productivity app that treats life as nested places. You always stand 
 ## Features
 
 - **Place UI** — Opening the app always stands you at **Home** (the hidden root). Nested descendants stay packed inside child area cards until you enter that place.
+- **Inbox ritual** — Every user gets a dedicated Inbox place under Home. Press **Ctrl+Shift+N** / **Cmd+Shift+N** from the map to quick-capture a task from anywhere, optionally parsing trailing `#tags`, then file it later.
 - **Now** — Up to **5** urgent tasks from the current place’s subtree (overdue, due today, next 7 days, then high-urgency undated). Extra matches show as a quiet “N more” count.
 - **Forgotten** — Exactly one stale child of the current place. Prefers an area whose `last_visited_at` is null or older than **14 days**; otherwise the oldest stale leaf not already in Now. Hidden when nothing is stale.
+- **Context lenses** — At Home, toggle **Errands**, **At computer**, **Calls**, or **At home** to see incomplete tagged leaves across the full tree without opening a second task view.
 - **Hybrid densities** — Direct children only, weighted Loud / Medium / Area / Compact. Progress, tags, and full urgency live in the detail panel, not on every card.
 - **Add** always creates a child of the current place. **Show done** reveals completed nodes (compact, struck through).
+- **Inline checklists** — TipTap descriptions support checklist blocks from the toolbar or **Mod+Shift+9**, live step counts in the panel, `- [ ]` markdown conversion, and auto-complete when every step is checked.
 - TipTap WYSIWYG rich-text description per node (Notion-style)
 - Slide-out detail panel without leaving the place
 - Keyboard: **Tab** on a selected non-root node creates a child and enters that place; **Enter** enters an area (has children) or opens the panel; **Delete** deletes (not Backspace)
 - Drag-and-drop re-parenting among visible children of the current place (entire subtree moves with the node)
 - Command palette (**Ctrl+K**) — searches titles and markdown content, then jumps to the hit’s **parent place** (not viewport pan)
 - Email/Password auth via Supabase Auth with Row-Level Security
+
+### Context Tags
+
+Use these fixed tags to power Home lenses:
+
+- `errands` → **Errands**
+- `computer` → **At computer**
+- `calls` → **Calls**
+- `home` → **At home**
+
+Quick capture only parses trailing `#tag` tokens into the node tag array, for example `Bank form #errands`.
 
 ---
 
@@ -101,8 +115,9 @@ Open the **SQL Editor** in your Supabase dashboard and run the migrations **in o
 1. [`supabase/migrations/001_initial_schema.sql`](supabase/migrations/001_initial_schema.sql) — creates the `nodes` table with the core columns (`id`, `user_id`, `parent_id`, `title`, `urgency`, `date`, `tags`, `description`, `position_x`, `position_y`, `sort_order`, `created_at`, `updated_at`), a GIN index on `tags`, an `updated_at` trigger, and **Row-Level Security (RLS)** so users can only read and write their own nodes.
 2. [`supabase/migrations/002_add_node_completion.sql`](supabase/migrations/002_add_node_completion.sql) — adds `nodes.completed`.
 3. [`supabase/migrations/003_add_last_visited_at.sql`](supabase/migrations/003_add_last_visited_at.sql) — adds `nodes.last_visited_at` (nullable timestamptz). Existing rows stay null (never visited) and are eligible for Forgotten. Standing in a place sets `last_visited_at` on that node and its ancestors.
+4. [`supabase/migrations/004_add_system_role.sql`](supabase/migrations/004_add_system_role.sql) — adds `nodes.system_role` and the per-user Inbox uniqueness index used by quick capture and Home Inbox surfacing.
 
-If the project already has `001` applied, still run `002` and `003`. Place UI requires `003`.
+If the project already has `001` applied, still run `002`, `003`, and `004`. Inbox, quick capture, and context lenses require `004`.
 
 ### 3. Enable Email/Password auth
 
@@ -198,6 +213,8 @@ Place-model unit tests (Now, Forgotten, densities, visit targets):
 npm test
 ```
 
+New coverage includes checklist progress parsing, Inbox helpers, and context-lens ranking.
+
 Watch mode:
 
 ```bash
@@ -232,6 +249,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 E2E_USER_EMAIL=...
 E2E_USER_PASSWORD=...
 ```
+
+If the shared Supabase test database has not applied [`supabase/migrations/004_add_system_role.sql`](supabase/migrations/004_add_system_role.sql), the new Inbox/lens Playwright specs will skip with a migration reminder.
 
 ---
 

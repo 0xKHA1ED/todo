@@ -86,7 +86,7 @@ export function MindmapCanvas() {
 
   const handleNodeClick = useCallback(
     (_event: MouseEvent, node: FlowNode) => {
-      if (node.data.insideCount === 0) {
+      if (!node.data.isArea) {
         openPanel(node.id)
         return
       }

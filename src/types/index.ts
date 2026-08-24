@@ -6,6 +6,7 @@ export interface NodeRecord {
   id: string
   user_id: string
   parent_id: string | null
+  system_role: 'inbox' | null
   title: string
   completed: boolean
   urgency: Urgency
@@ -22,6 +23,7 @@ export interface NodeRecord {
 
 export interface CreateNodePayload {
   parent_id: string | null
+  system_role?: NodeRecord['system_role']
   title?: string
   urgency?: Urgency
   date?: string | null
@@ -45,6 +47,7 @@ export type NodeDensity = 'loud' | 'medium' | 'area' | 'compact'
 export type NodeData = NodeRecord &
   NodeProgressSummary & {
     density: NodeDensity
+    isArea: boolean
     insideCount: number
     dueCount: number
     attentionCount: number

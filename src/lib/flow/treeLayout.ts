@@ -1,4 +1,5 @@
 import type { FlowEdge, FlowNode, NodeDensity, NodeRecord, NodeProgressSummary } from '@/types'
+import { parseChecklistProgress } from '@/lib/editor/checklistProgress'
 import { visibleChildren, type PlaceChildView } from '@/lib/place/placeModel'
 
 export const DENSITY_SIZE = {
@@ -175,7 +176,7 @@ export function getNodeSize(density: NodeDensity, attentionCount: number, title:
   }
 }
 
-function buildProgressLookup(dbNodes: NodeRecord[]) {
+export function buildProgressLookup(dbNodes: NodeRecord[]) {
   const childrenByParent = new Map<string, NodeRecord[]>()
   const progressByNode = new Map<string, NodeProgressSummary>()
 
@@ -211,11 +212,15 @@ function buildProgressLookup(dbNodes: NodeRecord[]) {
 
   dbNodes.forEach((node) => {
     const summary = visit(node.id)
-    const totalCount = summary.totalSubtaskCount || 1
-    const completedCount = summary.totalSubtaskCount === 0 ? (node.completed ? 1 : 0) : summary.completedSubtaskCount
+    const checklistProgress = parseChecklistProgress(node.description)
+    const totalSubtaskCount = summary.totalSubtaskCount + checklistProgress.total
+    const completedSubtaskCount = summary.completedSubtaskCount + checklistProgress.completed
+    const totalCount = totalSubtaskCount || 1
+    const completedCount = totalSubtaskCount === 0 ? (node.completed ? 1 : 0) : completedSubtaskCount
 
     progressByNode.set(node.id, {
-      ...summary,
+      totalSubtaskCount,
+      completedSubtaskCount,
       completionPercent: Math.round((completedCount / totalCount) * 100),
     })
   })
@@ -273,6 +278,7 @@ export function buildFlowGraph(
           completionPercent: view.node.completed ? 100 : 0,
         }),
         density: view.density,
+        isArea: view.isArea,
         insideCount: view.insideCount,
         dueCount: view.dueCount,
         attentionCount: view.attentionCount,

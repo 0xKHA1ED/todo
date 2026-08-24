@@ -22,6 +22,8 @@ export function useKeyboardNav() {
   const { toast } = useToast()
   const closePanel = useUIStore((state) => state.closePanel)
   const toggleCommandPalette = useUIStore((state) => state.toggleCommandPalette)
+  const setQuickCaptureOpen = useUIStore((state) => state.setQuickCaptureOpen)
+  const setActiveLensId = useUIStore((state) => state.setActiveLensId)
   const requestTitleFocus = useUIStore((state) => state.requestTitleFocus)
   const createNode = useNodeStore((state) => state.createNode)
   const deleteNode = useNodeStore((state) => state.deleteNode)
@@ -35,15 +37,38 @@ export function useKeyboardNav() {
       }
 
       if (event.key === 'Escape') {
+        if (useUIStore.getState().isCommandPaletteOpen || useUIStore.getState().isQuickCaptureOpen) {
+          return
+        }
+
+        if (useUIStore.getState().isPanelOpen) {
+          closePanel()
+          useUIStore.getState().selectNode(null)
+          return
+        }
+
+        if (useUIStore.getState().activeLensId) {
+          setActiveLensId(null)
+          useUIStore.getState().selectNode(null)
+          return
+        }
+
         closePanel()
         useUIStore.getState().selectNode(null)
         return
       }
 
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'n') {
+        if (shouldIgnoreShortcut(event)) return
+        event.preventDefault()
+        setQuickCaptureOpen(true)
+        return
+      }
+
       if (shouldIgnoreShortcut(event)) return
 
-  const nodes = useNodeStore.getState().nodes
-  const selectedNodeId = useUIStore.getState().selectedNodeId
+      const nodes = useNodeStore.getState().nodes
+      const selectedNodeId = useUIStore.getState().selectedNodeId
       const selected = nodes.find((node) => node.id === selectedNodeId)
       const enterPlace = useUIStore.getState().enterPlace
       const openPanel = useUIStore.getState().openPanel
@@ -61,7 +86,7 @@ export function useKeyboardNav() {
         if (event.key === 'Enter') {
           event.preventDefault()
           if (!selected) return
-          const isArea = nodes.some((node) => node.parent_id === selected.id)
+          const isArea = selected.system_role === 'inbox' || nodes.some((node) => node.parent_id === selected.id)
           if (isArea) enterPlace(selected.id)
           else openPanel(selected.id)
           return
@@ -100,6 +125,8 @@ export function useKeyboardNav() {
     createNode,
     deleteNode,
     requestTitleFocus,
+    setActiveLensId,
+    setQuickCaptureOpen,
     toast,
     toggleCommandPalette,
   ])

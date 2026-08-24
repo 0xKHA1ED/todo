@@ -25,7 +25,7 @@ export function CommandPalette() {
 
   function handleSelect(nodeId: string) {
     const hit = nodes.find((node) => node.id === nodeId)
-    const isArea = hit ? nodes.some((node) => node.parent_id === hit.id) : false
+    const isArea = hit ? hit.system_role === 'inbox' || nodes.some((node) => node.parent_id === hit.id) : false
     toggleCommandPalette(false)
     setQuery('')
     if (!hit) return

@@ -7,6 +7,48 @@ import { useAuthStore } from '@/lib/store/useAuthStore'
 import { defaultEditorContent } from '@/lib/utils'
 import type { CreateNodePayload, NodeRecord, UpdateNodePayload } from '@/types'
 
+const ROOT_TITLE = 'Main'
+const INBOX_TITLE = 'Inbox'
+
+async function ensureSystemNodes(userId: string, existingNodes: NodeRecord[]) {
+  let nodes = [...existingNodes]
+  let root = nodes.find((node) => node.parent_id === null) ?? null
+
+  if (!root) {
+    root = await queries.createNode({
+      user_id: userId,
+      parent_id: null,
+      title: ROOT_TITLE,
+      urgency: 'normal',
+      tags: [],
+      description: defaultEditorContent(),
+      sort_order: 0,
+    })
+    nodes = [root, ...nodes]
+  }
+
+  const inbox = nodes.find((node) => node.system_role === 'inbox') ?? null
+
+  if (!inbox) {
+    const createdInbox = await queries.createNode({
+      user_id: userId,
+      parent_id: root.id,
+      system_role: 'inbox',
+      title: INBOX_TITLE,
+      urgency: 'normal',
+      tags: [],
+      description: defaultEditorContent(),
+      sort_order: -1,
+    })
+    nodes = [...nodes, createdInbox]
+  } else if (inbox.parent_id !== root.id) {
+    await queries.reparentNode(inbox.id, root.id, -1)
+    nodes = nodes.map((node) => (node.id === inbox.id ? { ...node, parent_id: root.id, sort_order: -1 } : node))
+  }
+
+  return nodes
+}
+
 interface NodeStore {
   nodes: NodeRecord[]
   loading: boolean
@@ -45,18 +87,7 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
     set({ loading: true, error: null })
     try {
       let nodes = await queries.fetchNodes(userId)
-      if (!nodes.some((node) => node.parent_id === null)) {
-        const root = await queries.createNode({
-          user_id: userId,
-          parent_id: null,
-          title: 'Main',
-          urgency: 'normal',
-          tags: [],
-          description: defaultEditorContent(),
-          sort_order: 0,
-        })
-        nodes = [root, ...nodes]
-      }
+      nodes = await ensureSystemNodes(userId, nodes)
       set({ nodes: sortNodes(nodes), loading: false })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load nodes.'
@@ -71,6 +102,7 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
     const created = await queries.createNode({
       user_id: userId,
       parent_id: payload.parent_id,
+      system_role: payload.system_role ?? null,
       title: payload.title ?? 'New Task',
       urgency: payload.urgency ?? 'normal',
       date: payload.date ?? null,
@@ -99,6 +131,7 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
     const selected = get().nodes.find((node) => node.id === id)
     if (!selected) return
     if (selected.parent_id === null) throw new Error('The root node cannot be deleted.')
+    if (selected.system_role === 'inbox') throw new Error('Inbox cannot be deleted.')
 
     const previous = get().nodes
     const subtreeIds = new Set(get().getSubtreeIds(id))
@@ -115,6 +148,7 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
     const selected = get().nodes.find((node) => node.id === id)
     if (!selected) return
     if (selected.parent_id === null) throw new Error('The root node cannot be re-parented.')
+    if (selected.system_role === 'inbox') throw new Error('Inbox cannot be moved.')
     if (newParentId === id) throw new Error('A node cannot be parented to itself.')
 
     const nextSortOrder = get().nodes.filter((node) => node.parent_id === newParentId && node.id !== id).length

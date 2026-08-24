@@ -8,6 +8,7 @@ test.beforeEach(async () => {
 
 test('inline checklists update step progress and auto-complete the node', async ({ page }) => {
   await signIn(page)
+  await expect(page.getByText('Add a project')).toBeVisible()
   await page.getByRole('button', { name: 'Add' }).click()
 
   const title = `Checklist ${Date.now()}`
@@ -21,7 +22,7 @@ test('inline checklists update step progress and auto-complete the node', async 
   await page.keyboard.press('Enter')
   await page.keyboard.type('Form 23B')
 
-  await expect(page.getByText('0/2 steps')).toBeVisible()
+  await expect(page.getByText('0/2 steps').first()).toBeVisible()
 
   const checkboxes = page.locator('.tiptap input[type="checkbox"]')
   await expect(checkboxes).toHaveCount(2)

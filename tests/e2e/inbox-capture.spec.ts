@@ -8,6 +8,7 @@ test.beforeEach(async () => {
 
 test('quick capture adds an inbox item and File moves it under a project', async ({ page }) => {
   await signIn(page)
+  await expect(page.getByText('Add a project')).toBeVisible()
 
   const projectTitle = `Project ${Date.now()}`
   await page.getByRole('button', { name: 'Add' }).click()
@@ -22,14 +23,15 @@ test('quick capture adds an inbox item and File moves it under a project', async
   await dialog.getByRole('button', { name: 'Add to Inbox' }).click()
   await expect(dialog).toBeHidden()
 
-  await expect(page.getByText('Bank form')).toBeVisible()
-  await expect(page.getByText('errands')).toBeVisible()
+  const inboxSection = page.locator('section', { has: page.getByText('Inbox') }).first()
+  await expect(inboxSection.getByText('Bank form')).toBeVisible()
+  await expect(inboxSection.getByText('errands')).toBeVisible()
 
-  await page.getByRole('button', { name: 'File' }).click()
+  await inboxSection.getByRole('button', { name: 'File' }).click()
   await page.getByPlaceholder('Search destinations...').fill(projectTitle)
   await page.keyboard.press('Enter')
 
-  await expect(page.getByText('Bank form')).toHaveCount(0)
+  await expect(inboxSection.getByText('Bank form')).toHaveCount(0)
 
   await fitCanvas(page)
   const projectNode = page.locator('.react-flow__node', { hasText: projectTitle }).first()

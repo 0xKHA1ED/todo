@@ -9,6 +9,7 @@ import type { CreateNodePayload, NodeRecord, UpdateNodePayload } from '@/types'
 
 const ROOT_TITLE = 'Main'
 const INBOX_TITLE = 'Inbox'
+let fetchAllNodesPromise: Promise<void> | null = null
 
 async function ensureSystemNodes(userId: string, existingNodes: NodeRecord[]) {
   let nodes = [...existingNodes]
@@ -30,17 +31,26 @@ async function ensureSystemNodes(userId: string, existingNodes: NodeRecord[]) {
   const inbox = nodes.find((node) => node.system_role === 'inbox') ?? null
 
   if (!inbox) {
-    const createdInbox = await queries.createNode({
-      user_id: userId,
-      parent_id: root.id,
-      system_role: 'inbox',
-      title: INBOX_TITLE,
-      urgency: 'normal',
-      tags: [],
-      description: defaultEditorContent(),
-      sort_order: -1,
-    })
-    nodes = [...nodes, createdInbox]
+    try {
+      const createdInbox = await queries.createNode({
+        user_id: userId,
+        parent_id: root.id,
+        system_role: 'inbox',
+        title: INBOX_TITLE,
+        urgency: 'normal',
+        tags: [],
+        description: defaultEditorContent(),
+        sort_order: -1,
+      })
+      nodes = [...nodes, createdInbox]
+    } catch (error) {
+      const refreshedNodes = await queries.fetchNodes(userId)
+      const existingInbox = refreshedNodes.find((node) => node.system_role === 'inbox')
+      if (!existingInbox) {
+        throw error
+      }
+      nodes = refreshedNodes
+    }
   } else if (inbox.parent_id !== root.id) {
     await queries.reparentNode(inbox.id, root.id, -1)
     nodes = nodes.map((node) => (node.id === inbox.id ? { ...node, parent_id: root.id, sort_order: -1 } : node))
@@ -84,16 +94,26 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
 
   async fetchAllNodes() {
     const userId = requireUserId()
-    set({ loading: true, error: null })
-    try {
-      let nodes = await queries.fetchNodes(userId)
-      nodes = await ensureSystemNodes(userId, nodes)
-      set({ nodes: sortNodes(nodes), loading: false })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to load nodes.'
-      set({ error: message, loading: false })
-      throw error
+    if (fetchAllNodesPromise) {
+      return fetchAllNodesPromise
     }
+
+    fetchAllNodesPromise = (async () => {
+      set({ loading: true, error: null })
+      try {
+        let nodes = await queries.fetchNodes(userId)
+        nodes = await ensureSystemNodes(userId, nodes)
+        set({ nodes: sortNodes(nodes), loading: false })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to load nodes.'
+        set({ error: message, loading: false })
+        throw error
+      } finally {
+        fetchAllNodesPromise = null
+      }
+    })()
+
+    return fetchAllNodesPromise
   },
 
   async createNode(payload) {

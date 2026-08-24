@@ -93,6 +93,7 @@ export function PlaceScreen() {
 
   const nodesById = new Map(nodes.map((node) => [node.id, node]))
   const childViews = currentPlaceId ? visibleChildren(nodes, currentPlaceId, showDone, clock, clock) : []
+  const projectViews = isRootPlace ? childViews.filter((view) => view.node.system_role !== 'inbox') : childViews
   const forgottenStaleDays = forgotten
     ? forgotten.last_visited_at === null
       ? -1
@@ -113,7 +114,7 @@ export function PlaceScreen() {
         return path.join(' / ') || 'Home'
       })()
     : null
-  const showEmptyPrompt = !lensMode && !loading && Boolean(currentPlaceId) && childViews.length === 0
+  const showEmptyPrompt = !lensMode && !loading && Boolean(currentPlaceId) && projectViews.length === 0
 
   function handleNowPick(id: string) {
     const item = nodes.find((node) => node.id === id)

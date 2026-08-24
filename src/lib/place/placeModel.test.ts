@@ -176,6 +176,16 @@ describe('pickForgotten', () => {
     ]
     expect(pickForgotten(nodes, 'home', now, new Set())?.title).toBe('Nested stale')
   })
+
+  it('does not treat the Inbox system node as a forgotten leaf', () => {
+    const nodes = [
+      home,
+      node({ id: 'inbox', title: 'Inbox', system_role: 'inbox', last_visited_at: null }),
+      node({ id: 'real-leaf', title: 'Real leaf', last_visited_at: new Date(now.getTime() - 60_000).toISOString() }),
+    ]
+
+    expect(pickForgotten(nodes, 'home', now, new Set())?.title).toBe('Real leaf')
+  })
 })
 
 describe('visibleChildren', () => {

@@ -1,5 +1,5 @@
 import { expect, test, type Response } from '@playwright/test'
-import { closePanel, fitCanvas, requireE2ECredentials, seedNodeTree, selectFirstNode, signIn } from './helpers'
+import { closePanel, fitCanvas, requireE2ECredentials, seedNodeTree, selectNodeByTitle, signIn } from './helpers'
 
 test.beforeEach(requireE2ECredentials)
 
@@ -29,7 +29,7 @@ test('panel edits title, urgency, date, tags, and markdown content', async ({ pa
 
   await page.locator('.tiptap').fill('Markdown content from Playwright')
   await page.keyboard.press('Escape')
-  await selectFirstNode(page)
+  await selectNodeByTitle(page, title)
   await expect(page.locator('.tiptap')).toContainText('Markdown content from Playwright')
 })
 

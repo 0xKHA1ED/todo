@@ -152,7 +152,7 @@ export function pickForgotten(
     nodes.map((node) => node.parent_id).filter((parentId): parentId is string => parentId !== null),
   )
   const leaves = subtreeDescendants(nodes, placeId).filter((node) => {
-    if (node.completed || parentsWithChildren.has(node.id)) return false
+    if (node.completed || parentsWithChildren.has(node.id) || isArea(nodes, node.id)) return false
 
     let currentParentId = node.parent_id
     while (currentParentId && currentParentId !== placeId) {

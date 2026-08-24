@@ -146,7 +146,9 @@ export async function signIn(page: Page) {
   await page.getByLabel('Email').fill(process.env.E2E_USER_EMAIL!)
   await page.locator('input[type="password"]').fill(process.env.E2E_USER_PASSWORD!)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).toHaveURL(/\/map\/?$/)
+  await expect(page).toHaveURL(/\/map\/?$/, { timeout: 30_000 })
+  await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Home')
+  await expect(page.getByText('Add a project')).toBeVisible()
 }
 
 export async function selectFirstNode(page: Page) {

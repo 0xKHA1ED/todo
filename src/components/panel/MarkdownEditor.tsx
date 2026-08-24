@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import { EditorToolbar } from '@/components/panel/EditorToolbar'
 import { parseChecklistProgress, type ChecklistProgress } from '@/lib/editor/checklistProgress'
@@ -38,7 +38,7 @@ export function MarkdownEditor({
   const hydratedNodeIdRef = useRef<string | null>(null)
   const parsedContent = useMemo(() => parseContent(initialContent), [initialContent])
 
-  async function flushPendingUpdate(targetNodeId: string) {
+  const flushPendingUpdate = useCallback(async (targetNodeId: string) => {
     const content = pendingContentRef.current
     const progress = pendingChecklistProgressRef.current
 
@@ -66,7 +66,7 @@ export function MarkdownEditor({
     } catch {
       completedRef.current = currentCompleted
     }
-  }
+  }, [updateNode])
 
   const editor = useEditor({
     extensions: editorExtensions,
@@ -123,7 +123,7 @@ export function MarkdownEditor({
 
       void flushPendingUpdate(nodeId)
     },
-    [nodeId, updateNode],
+    [flushPendingUpdate, nodeId],
   )
 
   return (

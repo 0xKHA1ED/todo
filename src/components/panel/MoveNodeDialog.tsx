@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
@@ -52,6 +52,7 @@ export function MoveNodeDialog({ nodeId, open, onOpenChange }: MoveNodeDialogPro
   const nodes = useNodeStore((state) => state.nodes)
   const reparentNode = useNodeStore((state) => state.reparentNode)
   const getSubtreeIds = useNodeStore((state) => state.getSubtreeIds)
+  const [pendingParentId, setPendingParentId] = useState<string | null>(null)
   const node = nodes.find((candidate) => candidate.id === nodeId) ?? null
 
   const moveTargets = useMemo(() => {
@@ -60,12 +61,15 @@ export function MoveNodeDialog({ nodeId, open, onOpenChange }: MoveNodeDialogPro
   }, [getSubtreeIds, node, nodes])
 
   async function moveNode(newParentId: string) {
+    if (pendingParentId) return
+
     if (!node || newParentId === node.parent_id) {
       onOpenChange(false)
       return
     }
 
     try {
+      setPendingParentId(newParentId)
       await reparentNode(node.id, newParentId)
       onOpenChange(false)
     } catch (error) {
@@ -74,6 +78,8 @@ export function MoveNodeDialog({ nodeId, open, onOpenChange }: MoveNodeDialogPro
         description: error instanceof Error ? error.message : 'Could not move this node.',
         variant: 'destructive',
       })
+    } finally {
+      setPendingParentId(null)
     }
   }
 
@@ -90,7 +96,13 @@ export function MoveNodeDialog({ nodeId, open, onOpenChange }: MoveNodeDialogPro
             <CommandEmpty>No valid destinations.</CommandEmpty>
             <CommandGroup heading="Move under">
               {moveTargets.map((target) => (
-                <CommandItem key={target.id} value={`${target.title} ${target.path}`} onSelect={() => moveNode(target.id)}>
+                <CommandItem
+                  key={target.id}
+                  value={`${target.title} ${target.path}`}
+                  disabled={pendingParentId !== null}
+                  onClick={() => void moveNode(target.id)}
+                  onSelect={() => void moveNode(target.id)}
+                >
                   <div className="min-w-0">
                     <p className="truncate font-medium">{target.title}</p>
                     <p className="truncate text-xs text-muted-foreground">

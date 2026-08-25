@@ -7,7 +7,7 @@ A personal productivity app that treats life as nested places. You always stand 
 ## Features
 
 - **Place UI** — Opening the app always stands you at **Home** (the hidden root). Nested descendants stay packed inside child area cards until you enter that place.
-- **Inbox ritual** — Every user gets a dedicated Inbox place under Home. Press **C** from the map to quick-capture a task from anywhere, optionally parsing trailing `#tags`, then file it later.
+- **Inbox ritual** — Every user gets a dedicated Inbox place under Home. Press **C** from the map to quick-capture a task from anywhere, optionally parsing trailing `#tags`, then file it later by clicking a visible subtree on the map or searching destinations from the filing banner.
 - **Now** — Up to **5** urgent tasks from the current place’s subtree (overdue, due today, next 7 days, then high-urgency undated). Extra matches show as a quiet “N more” count.
 - **Forgotten** — Exactly one stale child of the current place. Prefers an area whose `last_visited_at` is null or older than **14 days**; otherwise the oldest stale leaf not already in Now. Hidden when nothing is stale.
 - **Context lenses** — At Home, toggle **Errands**, **At computer**, **Calls**, or **At home** to see incomplete tagged leaves across the full tree without opening a second task view.

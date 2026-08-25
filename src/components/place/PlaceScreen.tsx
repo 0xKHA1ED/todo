@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { MindmapCanvas } from '@/components/canvas/MindmapCanvas'
 import { CanvasToolbar } from '@/components/canvas/CanvasToolbar'
 import { QuickCaptureDialog } from '@/components/capture/QuickCaptureDialog'
 import { CommandPalette } from '@/components/palette/CommandPalette'
+import { MoveNodeDialog } from '@/components/panel/MoveNodeDialog'
 import { SlideOutPanel } from '@/components/panel/SlideOutPanel'
 import { ForgottenCard } from '@/components/place/ForgottenCard'
 import { InboxList } from '@/components/place/InboxList'
@@ -12,6 +13,7 @@ import { LensList } from '@/components/place/LensList'
 import { LensPicker } from '@/components/place/LensPicker'
 import { NowList } from '@/components/place/NowList'
 import { PlaceBreadcrumb } from '@/components/place/PlaceBreadcrumb'
+import { Button } from '@/components/ui/button'
 import { useKeyboardNav } from '@/hooks/useKeyboardNav'
 import { getInboxId, listInboxItems } from '@/lib/inbox/inboxModel'
 import { getLensById, rankLensItems } from '@/lib/place/contextLenses'
@@ -22,6 +24,7 @@ import { useToast } from '@/components/ui/use-toast'
 
 export function PlaceScreen() {
   const { toast } = useToast()
+  const [moveDialogNodeId, setMoveDialogNodeId] = useState<string | null>(null)
   const nodes = useNodeStore((state) => state.nodes)
   const loading = useNodeStore((state) => state.loading)
   const error = useNodeStore((state) => state.error)
@@ -34,6 +37,8 @@ export function PlaceScreen() {
   const openPanel = useUIStore((state) => state.openPanel)
   const isQuickCaptureOpen = useUIStore((state) => state.isQuickCaptureOpen)
   const setQuickCaptureOpen = useUIStore((state) => state.setQuickCaptureOpen)
+  const filingNodeId = useUIStore((state) => state.filingNodeId)
+  const cancelFilingNode = useUIStore((state) => state.cancelFilingNode)
   const activeLensId = useUIStore((state) => state.activeLensId)
   const setActiveLensId = useUIStore((state) => state.setActiveLensId)
 
@@ -142,6 +147,7 @@ export function PlaceScreen() {
   }, [activeLensId, currentPlaceId, nodes, showDone])
 
   const showEmptyPrompt = !lensMode && !loading && Boolean(currentPlaceId) && projectViewCount === 0
+  const filingNode = nodes.find((node) => node.id === filingNodeId) ?? null
 
   function handleNowPick(id: string) {
     const item = nodes.find((node) => node.id === id)
@@ -218,6 +224,29 @@ export function PlaceScreen() {
           <div className="pointer-events-auto">
             <PlaceBreadcrumb />
           </div>
+          {filingNode && (
+            <div className="pointer-events-auto flex items-center gap-3 rounded-[1.4rem] border border-sky-200/90 bg-white/88 px-4 py-3 shadow-[0_20px_65px_-42px_rgba(15,23,42,0.8)] backdrop-blur-xl">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">Filing inbox item</p>
+                <p className="text-sm leading-snug text-slate-900">Click a visible subtree to move "{filingNode.title}". Press Esc to cancel.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setMoveDialogNodeId(filingNode.id)
+                    cancelFilingNode()
+                  }}
+                >
+                  Search
+                </Button>
+                <Button size="sm" variant="secondary" onClick={cancelFilingNode}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
           {isRootPlace && (
             <div className="pointer-events-auto">
               <LensPicker activeLensId={activeLensId} onToggle={setActiveLensId} />
@@ -235,6 +264,7 @@ export function PlaceScreen() {
           </div>
         )}
         <SlideOutPanel />
+        <MoveNodeDialog nodeId={moveDialogNodeId} open={moveDialogNodeId !== null} onOpenChange={(open) => !open && setMoveDialogNodeId(null)} />
         <CommandPalette />
         <QuickCaptureDialog open={isQuickCaptureOpen} onOpenChange={setQuickCaptureOpen} />
       </div>

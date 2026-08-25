@@ -21,6 +21,7 @@ function shouldIgnoreShortcut(event: KeyboardEvent) {
 export function useKeyboardNav() {
   const { toast } = useToast()
   const closePanel = useUIStore((state) => state.closePanel)
+  const cancelFilingNode = useUIStore((state) => state.cancelFilingNode)
   const toggleCommandPalette = useUIStore((state) => state.toggleCommandPalette)
   const setQuickCaptureOpen = useUIStore((state) => state.setQuickCaptureOpen)
   const setActiveLensId = useUIStore((state) => state.setActiveLensId)
@@ -37,6 +38,11 @@ export function useKeyboardNav() {
       }
 
       if (event.key === 'Escape') {
+        if (useUIStore.getState().filingNodeId) {
+          cancelFilingNode()
+          return
+        }
+
         if (useUIStore.getState().isCommandPaletteOpen || useUIStore.getState().isQuickCaptureOpen) {
           return
         }
@@ -126,6 +132,7 @@ export function useKeyboardNav() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [
+    cancelFilingNode,
     closePanel,
     createNode,
     deleteNode,

@@ -1,10 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import { ArrowRight, Inbox } from 'lucide-react'
-import { MoveNodeDialog } from '@/components/panel/MoveNodeDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useUIStore } from '@/lib/store/useUIStore'
 import type { NodeRecord } from '@/types'
 
 interface InboxListProps {
@@ -14,7 +13,9 @@ interface InboxListProps {
 }
 
 export function InboxList({ items, overflow, onEnterInbox }: InboxListProps) {
-  const [filingNodeId, setFilingNodeId] = useState<string | null>(null)
+  const filingNodeId = useUIStore((state) => state.filingNodeId)
+  const startFilingNode = useUIStore((state) => state.startFilingNode)
+  const cancelFilingNode = useUIStore((state) => state.cancelFilingNode)
 
   if (items.length === 0) return null
 
@@ -42,8 +43,13 @@ export function InboxList({ items, overflow, onEnterInbox }: InboxListProps) {
                     </div>
                   )}
                 </div>
-                <Button type="button" size="sm" variant="secondary" onClick={() => setFilingNodeId(item.id)}>
-                  File
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={filingNodeId === item.id ? 'default' : 'secondary'}
+                  onClick={() => (filingNodeId === item.id ? cancelFilingNode() : startFilingNode(item.id))}
+                >
+                  {filingNodeId === item.id ? 'Cancel' : 'File'}
                 </Button>
               </div>
             </li>
@@ -62,8 +68,6 @@ export function InboxList({ items, overflow, onEnterInbox }: InboxListProps) {
           </Button>
         </div>
       </section>
-
-      <MoveNodeDialog nodeId={filingNodeId} open={filingNodeId !== null} onOpenChange={(open) => !open && setFilingNodeId(null)} />
     </>
   )
 }

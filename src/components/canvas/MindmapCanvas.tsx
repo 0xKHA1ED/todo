@@ -51,6 +51,8 @@ export function MindmapCanvas() {
   const closePanel = useUIStore((state) => state.closePanel)
   const selectNode = useUIStore((state) => state.selectNode)
   const enterPlace = useUIStore((state) => state.enterPlace)
+  const filingNodeId = useUIStore((state) => state.filingNodeId)
+  const cancelFilingNode = useUIStore((state) => state.cancelFilingNode)
   const currentPlaceId = useUIStore((state) => state.currentPlaceId)
   const showDone = useUIStore((state) => state.showDone)
   const root = dbNodes.find((node) => node.parent_id === null)
@@ -62,6 +64,7 @@ export function MindmapCanvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(flowGraph.edges)
   const { getIntersectingNodes, fitView } = useReactFlow()
   const clickTimeoutRef = useRef<number | null>(null)
+  const filingInFlightRef = useRef(false)
 
   useEffect(() => {
     setNodes(flowGraph.nodes)
@@ -85,7 +88,44 @@ export function MindmapCanvas() {
   }, [])
 
   const handleNodeClick = useCallback(
-    (_event: MouseEvent, node: FlowNode) => {
+    (event: MouseEvent, node: FlowNode) => {
+      if (filingNodeId) {
+        event.stopPropagation()
+        if (clickTimeoutRef.current !== null) {
+          window.clearTimeout(clickTimeoutRef.current)
+          clickTimeoutRef.current = null
+        }
+        if (filingInFlightRef.current) return
+
+        const filingNode = dbNodes.find((candidate) => candidate.id === filingNodeId)
+        if (!filingNode) {
+          cancelFilingNode()
+          return
+        }
+
+        if (node.id === filingNode.parent_id) {
+          cancelFilingNode()
+          return
+        }
+
+        filingInFlightRef.current = true
+        void (async () => {
+          try {
+            await reparentNode(filingNode.id, node.id)
+            cancelFilingNode()
+          } catch (error) {
+            toast({
+              title: 'File failed',
+              description: error instanceof Error ? error.message : 'The node could not be moved.',
+              variant: 'destructive',
+            })
+          } finally {
+            filingInFlightRef.current = false
+          }
+        })()
+        return
+      }
+
       if (!node.data.isArea) {
         openPanel(node.id)
         return
@@ -104,11 +144,15 @@ export function MindmapCanvas() {
         clickTimeoutRef.current = null
       }, 180)
     },
-    [currentPlaceId, openPanel, selectNode],
+    [cancelFilingNode, currentPlaceId, dbNodes, filingNodeId, openPanel, reparentNode, selectNode, toast],
   )
 
   const handleNodeDoubleClick = useCallback(
     (event: MouseEvent, node: FlowNode) => {
+      if (filingNodeId) {
+        event.stopPropagation()
+        return
+      }
       event.stopPropagation()
       if (clickTimeoutRef.current !== null) {
         window.clearTimeout(clickTimeoutRef.current)
@@ -117,7 +161,7 @@ export function MindmapCanvas() {
       closePanel()
       enterPlace(node.id)
     },
-    [closePanel, enterPlace],
+    [closePanel, enterPlace, filingNodeId],
   )
 
   const handleNodeDragStop = useCallback(

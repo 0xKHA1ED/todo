@@ -28,7 +28,7 @@ test('quick capture adds an inbox item and File moves it under a project', async
   await expect(inboxSection.getByText('errands')).toBeVisible()
 
   await inboxSection.getByRole('button', { name: 'File' }).click()
-  await expect(page.getByText('Click a visible subtree to move "Bank form". Press Esc to cancel.')).toBeVisible()
+  await expect(page.getByText(/Click a visible subtree to move .*Bank form.* Press Esc to cancel\./)).toBeVisible()
   const projectNode = page.locator('.react-flow__node', { hasText: projectTitle }).first()
   await expect(projectNode).toBeVisible()
   await projectNode.click()

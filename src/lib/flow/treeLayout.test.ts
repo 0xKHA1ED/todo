@@ -150,3 +150,95 @@ describe('buildFlowGraph', () => {
     })
   })
 })
+
+describe('buildProgressLookup', () => {
+  const checklist = (checked: number, unchecked: number) =>
+    JSON.stringify({
+      type: 'doc',
+      content: [
+        {
+          type: 'taskList',
+          content: [
+            ...Array.from({ length: checked }, () => ({
+              type: 'taskItem',
+              attrs: { checked: true },
+              content: [{ type: 'paragraph' }],
+            })),
+            ...Array.from({ length: unchecked }, () => ({
+              type: 'taskItem',
+              attrs: { checked: false },
+              content: [{ type: 'paragraph' }],
+            })),
+          ],
+        },
+      ],
+    })
+
+  it('produces identical results regardless of node ordering (regression)', () => {
+    const parent = node({ id: 'parent', title: 'Parent', parent_id: 'home' })
+    const child = node({ id: 'child', title: 'Child', parent_id: 'parent', description: checklist(1, 1) })
+
+    const parentFirst = buildProgressLookup([home, parent, child]).get('parent')
+    const childFirst = buildProgressLookup([home, child, parent]).get('parent')
+
+    // 1 child node (open) + child's 2 checklist steps (1 done) => 3 total, 1 done.
+    expect(parentFirst).toEqual({ totalSubtaskCount: 3, completedSubtaskCount: 1, completionPercent: 33 })
+    expect(childFirst).toEqual(parentFirst)
+  })
+
+  it('rolls checklist steps from deep descendants up into ancestors', () => {
+    const nodes = [
+      home,
+      node({ id: 'area', title: 'Area', parent_id: 'home' }),
+      node({ id: 'mid', title: 'Mid', parent_id: 'area' }),
+      node({ id: 'leaf', title: 'Leaf', parent_id: 'mid', description: checklist(2, 2) }),
+    ]
+
+    const progress = buildProgressLookup(nodes)
+    // area subtree: mid (1) + leaf (1) + leaf's 4 checklist steps = 6 total, 2 done.
+    expect(progress.get('area')).toEqual({ totalSubtaskCount: 6, completedSubtaskCount: 2, completionPercent: 33 })
+    expect(progress.get('leaf')).toEqual({ totalSubtaskCount: 4, completedSubtaskCount: 2, completionPercent: 50 })
+  })
+
+  it('reports a completed leaf with no subtasks as 100 percent', () => {
+    const progress = buildProgressLookup([home, node({ id: 'solo', title: 'Solo', completed: true })])
+    expect(progress.get('solo')).toEqual({ totalSubtaskCount: 0, completedSubtaskCount: 0, completionPercent: 100 })
+  })
+
+  it('does not infinitely recurse on a malformed parent cycle', () => {
+    const a = node({ id: 'a', title: 'A', parent_id: 'b' })
+    const b = node({ id: 'b', title: 'B', parent_id: 'a' })
+    expect(() => buildProgressLookup([home, a, b])).not.toThrow()
+  })
+})
+
+describe('buildFlowGraph filtering', () => {
+  it('hides completed leaves unless showDone is set and never emits edges', () => {
+    const nodes = [
+      home,
+      node({ id: 'open', title: 'Open', sort_order: 0 }),
+      node({ id: 'done', title: 'Done', completed: true, sort_order: 1 }),
+    ]
+
+    const hidden = buildFlowGraph(nodes, 'home', false)
+    expect(hidden.nodes.map((entry) => entry.id)).toEqual(['open'])
+    expect(hidden.edges).toEqual([])
+
+    const shown = buildFlowGraph(nodes, 'home', true)
+    expect(shown.nodes.map((entry) => entry.id).sort()).toEqual(['done', 'open'])
+  })
+
+  it('marks area nodes and carries inside/attention counts onto node data', () => {
+    const nodes = [
+      home,
+      node({ id: 'area', title: 'Area', sort_order: 0 }),
+      node({ id: 'kid', title: 'Kid', parent_id: 'area', urgency: 'high' }),
+    ]
+
+    const graph = buildFlowGraph(nodes, 'home', false)
+    const area = graph.nodes.find((entry) => entry.id === 'area')
+    expect(area?.data.isArea).toBe(true)
+    expect(area?.data.insideCount).toBe(1)
+    expect(area?.data.attentionCount).toBeGreaterThanOrEqual(1)
+  })
+})

@@ -29,4 +29,15 @@ describe('parseQuickCaptureTitle', () => {
       tags: [],
     })
   })
+
+  it('falls back to a default title when the input is only tags', () => {
+    expect(parseQuickCaptureTitle('#errands #home')).toEqual({
+      title: 'New Task',
+      tags: ['errands', 'home'],
+    })
+  })
+
+  it('returns a default title for blank input', () => {
+    expect(parseQuickCaptureTitle('   ')).toEqual({ title: 'New Task', tags: [] })
+  })
 })

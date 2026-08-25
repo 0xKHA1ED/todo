@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { pickForgotten, rankNow, STALE_MS, visibleChildren, visitTargetIds } from './placeModel'
+import {
+  daysUntil,
+  getDirectChildren,
+  getSubtreeIds,
+  isArea,
+  isStale,
+  pickForgotten,
+  rankNow,
+  STALE_MS,
+  subtreeDescendants,
+  visibleChildren,
+  visitTargetIds,
+} from './placeModel'
 import type { NodeRecord, Urgency } from '@/types'
 
 function node(partial: Partial<NodeRecord> & Pick<NodeRecord, 'id' | 'title'>): NodeRecord {
@@ -282,5 +294,78 @@ describe('visitTargetIds', () => {
     ]
     expect(visitTargetIds(nodes, 'design')).toEqual(['design', 'biz', 'home'])
     expect(visitTargetIds(nodes, 'design')).not.toContain('logo')
+  })
+
+  it('returns an empty array for an unknown place', () => {
+    expect(visitTargetIds([home], 'missing')).toEqual([])
+  })
+})
+
+describe('tree traversal helpers', () => {
+  const nodes = [
+    home,
+    node({ id: 'biz', title: 'Business' }),
+    node({ id: 'design', title: 'Design', parent_id: 'biz' }),
+    node({ id: 'logo', title: 'Logo', parent_id: 'design' }),
+    node({ id: 'health', title: 'Health' }),
+  ]
+
+  it('getDirectChildren returns only immediate children', () => {
+    expect(getDirectChildren(nodes, 'home').map((n) => n.id).sort()).toEqual(['biz', 'health'])
+    expect(getDirectChildren(nodes, 'biz').map((n) => n.id)).toEqual(['design'])
+    expect(getDirectChildren(nodes, 'logo')).toEqual([])
+  })
+
+  it('getSubtreeIds includes the root and every descendant', () => {
+    expect(getSubtreeIds(nodes, 'biz')).toEqual(new Set(['biz', 'design', 'logo']))
+  })
+
+  it('subtreeDescendants excludes the place itself', () => {
+    expect(subtreeDescendants(nodes, 'biz').map((n) => n.id).sort()).toEqual(['design', 'logo'])
+  })
+})
+
+describe('daysUntil', () => {
+  const today = new Date(2026, 7, 18)
+
+  it('returns null for missing or malformed dates', () => {
+    expect(daysUntil(null, today)).toBeNull()
+    expect(daysUntil('not-a-date', today)).toBeNull()
+  })
+
+  it('computes signed whole-day differences from local midnight', () => {
+    expect(daysUntil('2026-08-18', today)).toBe(0)
+    expect(daysUntil('2026-08-19', today)).toBe(1)
+    expect(daysUntil('2026-08-11', today)).toBe(-7)
+  })
+})
+
+describe('isArea', () => {
+  it('is true for nodes with children and for the Inbox system node', () => {
+    const nodes = [
+      home,
+      node({ id: 'area', title: 'Area' }),
+      node({ id: 'child', title: 'Child', parent_id: 'area' }),
+      node({ id: 'leaf', title: 'Leaf' }),
+      node({ id: 'inbox', title: 'Inbox', system_role: 'inbox' }),
+    ]
+    expect(isArea(nodes, 'area')).toBe(true)
+    expect(isArea(nodes, 'inbox')).toBe(true)
+    expect(isArea(nodes, 'leaf')).toBe(false)
+  })
+})
+
+describe('isStale', () => {
+  const now = new Date('2026-08-18T12:00:00.000Z')
+
+  it('treats never-visited nodes as stale', () => {
+    expect(isStale(node({ id: 'n', title: 'N', last_visited_at: null }), now)).toBe(true)
+  })
+
+  it('is stale only past the 14-day threshold', () => {
+    const fresh = node({ id: 'f', title: 'F', last_visited_at: new Date(now.getTime() - STALE_MS + 1000).toISOString() })
+    const old = node({ id: 'o', title: 'O', last_visited_at: new Date(now.getTime() - STALE_MS - 1000).toISOString() })
+    expect(isStale(fresh, now)).toBe(false)
+    expect(isStale(old, now)).toBe(true)
   })
 })

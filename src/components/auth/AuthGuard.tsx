@@ -15,7 +15,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center text-muted-foreground">
+      <main className="bg-aurora-soft flex min-h-screen items-center justify-center text-sm text-muted-foreground">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         Loading session...
       </main>
@@ -24,8 +24,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (configError) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-4">
-        <div className="max-w-md rounded-xl border bg-card p-6 text-card-foreground shadow-xl">
+      <main className="bg-aurora-soft flex min-h-screen items-center justify-center px-4">
+        <div className="max-w-md rounded-3xl border border-white/60 bg-white/90 p-6 text-card-foreground shadow-[0_40px_120px_-50px_rgba(2,6,23,0.55)] backdrop-blur-2xl">
           <h1 className="text-lg font-semibold">Supabase is not configured</h1>
           <p className="mt-2 text-sm text-muted-foreground">{configError}</p>
           <p className="mt-4 text-sm text-muted-foreground">

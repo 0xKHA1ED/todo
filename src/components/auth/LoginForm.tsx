@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Waypoints } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -49,10 +49,15 @@ export function LoginForm() {
   }
 
   return (
-    <section className="w-full max-w-md rounded-2xl border bg-card/90 p-8 text-card-foreground shadow-2xl backdrop-blur">
+    <section className="w-full overflow-hidden rounded-3xl border border-white/60 bg-white/95 p-8 text-card-foreground shadow-[0_40px_120px_-40px_rgba(2,6,23,0.75)] backdrop-blur-2xl">
       <div className="mb-8">
-        <p className="text-sm font-medium text-primary">Mindmap Tasks</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-sky-400 text-primary-foreground shadow-lg shadow-primary/30">
+            <Waypoints className="h-5 w-5" />
+          </span>
+          <p className="text-sm font-semibold tracking-tight text-primary">Mindmap Tasks</p>
+        </div>
+        <h1 className="mt-5 text-3xl font-semibold tracking-tight">
           {mode === 'signin' ? 'Welcome back' : 'Create your workspace'}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">

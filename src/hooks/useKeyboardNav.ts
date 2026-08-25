@@ -64,6 +64,12 @@ export function useKeyboardNav() {
         return
       }
 
+      // While a modal search surface owns the keyboard, don't let global shortcuts
+      // (quick capture, create/enter/delete) leak through to the canvas beneath it.
+      if (useUIStore.getState().isCommandPaletteOpen || useUIStore.getState().isQuickCaptureOpen) {
+        return
+      }
+
       if (
         !event.metaKey &&
         !event.ctrlKey &&

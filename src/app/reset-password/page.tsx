@@ -68,8 +68,8 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <div className="max-w-md rounded-2xl border bg-card/90 p-8">
+    <main className="bg-aurora-soft flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md rounded-3xl border border-white/60 bg-white/90 p-8 shadow-[0_40px_120px_-50px_rgba(2,6,23,0.55)] backdrop-blur-2xl">
         {status === 'waiting' ? <p>Checking reset link…</p> : null}
         {status === 'expired' ? (
           <>

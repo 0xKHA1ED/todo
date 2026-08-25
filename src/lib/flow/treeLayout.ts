@@ -176,45 +176,53 @@ export function getNodeSize(density: NodeDensity, attentionCount: number, title:
   }
 }
 
+type SubtreeSummary = Pick<NodeProgressSummary, 'totalSubtaskCount' | 'completedSubtaskCount'>
+
 export function buildProgressLookup(dbNodes: NodeRecord[]) {
   const childrenByParent = new Map<string, NodeRecord[]>()
-  const progressByNode = new Map<string, NodeProgressSummary>()
+  const nodesById = new Map<string, NodeRecord>()
 
   dbNodes.forEach((node) => {
+    nodesById.set(node.id, node)
     if (!node.parent_id) return
     const siblings = childrenByParent.get(node.parent_id) ?? []
     siblings.push(node)
     childrenByParent.set(node.parent_id, siblings)
   })
 
-  const visit = (nodeId: string): Pick<NodeProgressSummary, 'totalSubtaskCount' | 'completedSubtaskCount'> => {
-    const cached = progressByNode.get(nodeId)
-    if (cached) {
-      return {
-        totalSubtaskCount: cached.totalSubtaskCount,
-        completedSubtaskCount: cached.completedSubtaskCount,
-      }
+  // Aggregate the subtree rooted at nodeId: every descendant node counts as one
+  // step (completed when the node is completed) plus every checklist item found in
+  // that node's and its descendants' descriptions. Memoized independently of the
+  // exported summaries so the result never depends on dbNodes ordering.
+  const subtreeCache = new Map<string, SubtreeSummary>()
+  const inProgress = new Set<string>()
+
+  const aggregate = (nodeId: string): SubtreeSummary => {
+    const cached = subtreeCache.get(nodeId)
+    if (cached) return cached
+    if (inProgress.has(nodeId)) return { totalSubtaskCount: 0, completedSubtaskCount: 0 }
+    inProgress.add(nodeId)
+
+    const node = nodesById.get(nodeId)
+    const ownChecklist = node ? parseChecklistProgress(node.description) : { total: 0, completed: 0 }
+    let totalSubtaskCount = ownChecklist.total
+    let completedSubtaskCount = ownChecklist.completed
+
+    for (const child of childrenByParent.get(nodeId) ?? []) {
+      const childSummary = aggregate(child.id)
+      totalSubtaskCount += 1 + childSummary.totalSubtaskCount
+      completedSubtaskCount += (child.completed ? 1 : 0) + childSummary.completedSubtaskCount
     }
 
-    const children = childrenByParent.get(nodeId) ?? []
-    const summary = children.reduce(
-      (accumulator, child) => {
-        const childSummary = visit(child.id)
-        accumulator.totalSubtaskCount += 1 + childSummary.totalSubtaskCount
-        accumulator.completedSubtaskCount += (child.completed ? 1 : 0) + childSummary.completedSubtaskCount
-        return accumulator
-      },
-      { totalSubtaskCount: 0, completedSubtaskCount: 0 },
-    )
-
+    const summary: SubtreeSummary = { totalSubtaskCount, completedSubtaskCount }
+    inProgress.delete(nodeId)
+    subtreeCache.set(nodeId, summary)
     return summary
   }
 
+  const progressByNode = new Map<string, NodeProgressSummary>()
   dbNodes.forEach((node) => {
-    const summary = visit(node.id)
-    const checklistProgress = parseChecklistProgress(node.description)
-    const totalSubtaskCount = summary.totalSubtaskCount + checklistProgress.total
-    const completedSubtaskCount = summary.completedSubtaskCount + checklistProgress.completed
+    const { totalSubtaskCount, completedSubtaskCount } = aggregate(node.id)
     const totalCount = totalSubtaskCount || 1
     const completedCount = totalSubtaskCount === 0 ? (node.completed ? 1 : 0) : completedSubtaskCount
 

@@ -6,28 +6,29 @@
 
 @layer base {
   :root {
-    --background: 210 29% 96%;
-    --foreground: 220 35% 12%;
+    --background: 213 35% 96%;
+    --foreground: 222 42% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 220 35% 12%;
+    --card-foreground: 222 42% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 35% 12%;
-    --primary: 203 85% 35%;
+    --popover-foreground: 222 42% 12%;
+    --primary: 224 76% 52%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 22% 91%;
-    --secondary-foreground: 218 28% 20%;
-    --muted: 210 22% 92%;
-    --muted-foreground: 217 14% 42%;
-    --accent: 158 44% 90%;
-    --accent-foreground: 166 56% 20%;
-    --destructive: 348 77% 45%;
+    --secondary: 214 30% 92%;
+    --secondary-foreground: 221 33% 22%;
+    --muted: 214 28% 92%;
+    --muted-foreground: 218 16% 44%;
+    --accent: 199 89% 92%;
+    --accent-foreground: 202 80% 26%;
+    --destructive: 348 79% 47%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 18% 80%;
-    --input: 214 18% 76%;
-    --ring: 203 85% 35%;
-    --radius: 0.5rem;
+    --border: 215 22% 84%;
+    --input: 215 20% 80%;
+    --ring: 224 76% 56%;
+    --radius: 0.75rem;
     --canvas: 210 33% 97%;
     --mindmap-edge: 214 24% 48%;
+    --shadow-color: 222 47% 20%;
   }
 
   * {
@@ -40,8 +41,50 @@
   }
 
   body {
-    background: hsl(var(--background));
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    background:
+      radial-gradient(60rem 60rem at 8% -10%, hsl(204 90% 90% / 0.55), transparent 55%),
+      radial-gradient(52rem 52rem at 108% 12%, hsl(266 85% 90% / 0.45), transparent 52%),
+      radial-gradient(46rem 46rem at 50% 120%, hsl(180 70% 88% / 0.4), transparent 55%),
+      linear-gradient(180deg, hsl(213 40% 97%), hsl(214 34% 94%));
+    background-attachment: fixed;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  :focus-visible {
+    outline: none;
+  }
+
+  /* Refined, unobtrusive scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(215 20% 72%) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    background-color: hsl(215 18% 74% / 0.9);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(215 20% 64%);
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
   }
 }
 
@@ -120,9 +163,32 @@
 
   .mindmap-canvas {
     background:
-      radial-gradient(circle at top left, rgba(148, 163, 184, 0.14), transparent 28%),
-      radial-gradient(circle at right 18%, rgba(14, 165, 233, 0.12), transparent 24%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(238, 244, 248, 0.96));
+      radial-gradient(circle at top left, rgba(59, 130, 246, 0.1), transparent 30%),
+      radial-gradient(circle at right 18%, rgba(14, 165, 233, 0.12), transparent 26%),
+      radial-gradient(circle at 30% 120%, rgba(139, 92, 246, 0.1), transparent 32%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(236, 243, 249, 0.97));
+  }
+
+  .mindmap-canvas .react-flow__background {
+    opacity: 0.6;
+  }
+
+  .mindmap-node {
+    transition:
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 180ms ease;
+    will-change: transform;
+  }
+
+  .react-flow__node:hover .mindmap-node {
+    transform: translateY(-2px);
+    box-shadow: 0 26px 60px -30px rgba(15, 23, 42, 0.55);
+  }
+
+  .react-flow__node.dragging .mindmap-node {
+    transform: scale(1.02);
+    box-shadow: 0 34px 80px -34px rgba(15, 23, 42, 0.6);
   }
 
   .mindmap-node-title {
@@ -152,10 +218,66 @@
   }
 
   .mindmap-canvas .react-flow__controls {
-    @apply overflow-hidden rounded-lg border border-border bg-card shadow-lg;
+    @apply overflow-hidden rounded-xl border border-white/70 bg-white/85 shadow-[0_20px_60px_-38px_rgba(15,23,42,0.75)] backdrop-blur-xl;
   }
 
   .mindmap-canvas .react-flow__controls-button {
-    @apply border-border bg-card text-foreground hover:bg-secondary;
+    @apply border-border/60 bg-transparent text-foreground transition-colors hover:bg-primary/10 hover:text-primary;
+  }
+}
+
+@layer utilities {
+  .bg-aurora {
+    background:
+      radial-gradient(38rem 38rem at 12% 8%, hsl(224 90% 62% / 0.35), transparent 60%),
+      radial-gradient(34rem 34rem at 88% 18%, hsl(266 85% 66% / 0.32), transparent 58%),
+      radial-gradient(30rem 30rem at 60% 108%, hsl(190 85% 60% / 0.3), transparent 60%),
+      linear-gradient(180deg, hsl(222 47% 12%), hsl(224 44% 16%));
+  }
+
+  .bg-aurora-soft {
+    background:
+      radial-gradient(40rem 40rem at 10% -6%, hsl(204 92% 84% / 0.7), transparent 55%),
+      radial-gradient(36rem 36rem at 106% 10%, hsl(266 88% 88% / 0.6), transparent 55%),
+      radial-gradient(30rem 30rem at 50% 118%, hsl(182 78% 84% / 0.55), transparent 58%),
+      linear-gradient(180deg, hsl(213 42% 97%), hsl(214 34% 93%));
+  }
+
+  .animate-aurora {
+    animation: aurora-drift 18s ease-in-out infinite alternate;
+  }
+
+  .animate-float {
+    animation: float-slow 9s ease-in-out infinite;
+  }
+
+  @keyframes aurora-drift {
+    0% {
+      transform: translate3d(-2%, -1%, 0) scale(1);
+    }
+    100% {
+      transform: translate3d(3%, 2%, 0) scale(1.08);
+    }
+  }
+
+  @keyframes float-slow {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-aurora,
+    .animate-float {
+      animation: none;
+    }
+    .mindmap-node,
+    .react-flow__node:hover .mindmap-node {
+      transition: none;
+    }
   }
 }

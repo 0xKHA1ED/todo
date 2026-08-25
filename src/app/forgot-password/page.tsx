@@ -32,8 +32,8 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <div className="max-w-md rounded-2xl border bg-card/90 p-8">
+    <main className="bg-aurora-soft flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md rounded-3xl border border-white/60 bg-white/90 p-8 shadow-[0_40px_120px_-50px_rgba(2,6,23,0.55)] backdrop-blur-2xl">
         <h1 className="text-2xl font-semibold">Forgot password</h1>
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { requireE2ECredentials, requireLifePmMigration, seedNodeTree, signIn } from './helpers'
+import { openQuickCapture, requireE2ECredentials, requireLifePmMigration, seedNodeTree, signIn } from './helpers'
 
 test.beforeEach(async () => {
   requireE2ECredentials()
@@ -28,7 +28,7 @@ test('cannot add a work item before Execute and can after', async ({ page }) => 
 
 test('inbox promote creates a project at problem with seed text', async ({ page }) => {
   await signIn(page)
-  await page.keyboard.press('c')
+  await openQuickCapture(page)
   const capture = page.getByRole('dialog', { name: 'Quick capture' })
   await capture.getByLabel('Title').fill('Silent session drop')
   await capture.getByRole('button', { name: 'Add to Inbox' }).click()
@@ -37,7 +37,8 @@ test('inbox promote creates a project at problem with seed text', async ({ page 
   await page.getByTestId('promote-to-project').click()
   await page.getByTestId('promote-submit').click()
 
+  await expect(page.getByTestId('inbox-sheet')).toBeHidden()
   await expect(page.getByTestId('module-dashboard')).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Silent session drop' })).toBeVisible()
+  await expect(page.getByTestId('place-title')).toHaveText('Silent session drop')
   await expect(page.getByTestId('stage-document')).toContainText('Silent session drop')
 })

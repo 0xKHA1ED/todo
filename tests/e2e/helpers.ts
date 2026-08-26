@@ -198,6 +198,24 @@ export async function signIn(page: Page) {
   await expect(page.getByText('Add a domain or project')).toBeVisible()
 }
 
+export async function goHome(page: Page) {
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  if (!(await page.getByTestId('portfolio-dashboard').isVisible().catch(() => false))) {
+    await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('button', { name: 'Home' }).click()
+  }
+  await expect(page.getByTestId('portfolio-dashboard')).toBeVisible()
+}
+
+export async function openQuickCapture(page: Page) {
+  await page.getByRole('button', { name: 'C', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Quick capture' })).toBeVisible()
+}
+
+export function panelEditor(page: Page) {
+  return page.getByRole('dialog').filter({ has: page.getByLabel('Title') }).locator('.tiptap')
+}
+
 export async function openProjectCard(page: Page, title: string) {
   const card = page.getByTestId('project-card').filter({ hasText: title }).first()
   await expect(card).toBeVisible()

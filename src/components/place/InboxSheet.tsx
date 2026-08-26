@@ -27,7 +27,7 @@ export function InboxSheet({ inboxId }: InboxSheetProps) {
   return (
     <>
       <Sheet open={isInboxOpen} onOpenChange={setInboxOpen}>
-        <SheetContent side="right" className="w-[94vw] overflow-y-auto sm:max-w-md">
+        <SheetContent side="right" className="w-[94vw] overflow-y-auto sm:max-w-md" data-testid="inbox-sheet">
           <SheetHeader>
             <SheetTitle>Inbox</SheetTitle>
           </SheetHeader>

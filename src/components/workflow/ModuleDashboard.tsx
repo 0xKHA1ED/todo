@@ -57,7 +57,9 @@ export function ModuleDashboard({ place }: ModuleDashboardProps) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Think</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{place.title}</h1>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900" data-testid="place-title">
+            {place.title}
+          </h1>
           {place.break_glass?.used && <p className="mt-1 text-xs font-medium text-amber-700">Emergency skip used</p>}
         </div>
         <div className="flex flex-wrap gap-2">

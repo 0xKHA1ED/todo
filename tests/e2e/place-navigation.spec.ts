@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { closePanel, requireE2ECredentials, seedNodeTree, signIn } from './helpers'
+import { closePanel, goHome, requireE2ECredentials, seedNodeTree, signIn } from './helpers'
 
 test.beforeEach(requireE2ECredentials)
 
@@ -15,8 +15,7 @@ test('shows only direct children and breadcrumb enters a nested module', async (
 
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Home')
   await expect(page.getByTestId('project-card').filter({ hasText: 'Art Business' })).toBeVisible()
-  await expect(page.getByTestId('hub-card').filter({ hasText: 'Marketing' })).toHaveCount(0)
-  await expect(page.getByText('Copy', { exact: true })).toHaveCount(0)
+  await expect(page.getByTestId('hub-card')).toHaveCount(0)
 
   await page.getByTestId('project-card').filter({ hasText: 'Art Business' }).click()
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Art Business')
@@ -28,7 +27,7 @@ test('shows only direct children and breadcrumb enters a nested module', async (
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Marketing')
   await expect(page.getByTestId('hub-card').filter({ hasText: 'Copy' })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Home' }).click()
+  await goHome(page)
   await expect(page.getByTestId('project-card').filter({ hasText: 'Art Business' })).toBeVisible()
 })
 

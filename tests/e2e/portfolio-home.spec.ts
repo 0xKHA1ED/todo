@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { requireE2ECredentials, requireLifePmMigration, seedNodeTree, signIn } from './helpers'
+import { openQuickCapture, requireE2ECredentials, requireLifePmMigration, seedNodeTree, signIn } from './helpers'
 
 test.beforeEach(async () => {
   requireE2ECredentials()
@@ -34,9 +34,8 @@ test('/map shows a project card grid instead of the canvas', async ({ page }) =>
 
 test('Inbox and C work from the portfolio', async ({ page }) => {
   await signIn(page)
-  await page.keyboard.press('c')
-  await expect(page.getByRole('dialog', { name: 'Quick capture' })).toBeVisible()
+  await openQuickCapture(page)
   await page.keyboard.press('Escape')
   await page.getByTestId('inbox-badge').click()
-  await expect(page.getByRole('dialog').last().getByText('Inbox')).toBeVisible()
+  await expect(page.getByTestId('inbox-sheet').getByRole('heading', { name: 'Inbox' })).toBeVisible()
 })

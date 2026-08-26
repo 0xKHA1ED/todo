@@ -1,5 +1,5 @@
 import { expect, test, type Response } from '@playwright/test'
-import { addProject, closePanel, requireE2ECredentials, seedNodeTree, signIn } from './helpers'
+import { addProject, closePanel, panelEditor, requireE2ECredentials, seedNodeTree, signIn } from './helpers'
 
 test.beforeEach(requireE2ECredentials)
 
@@ -22,11 +22,11 @@ test('panel edits title, outcome, tags, and markdown content', async ({ page }) 
   await page.getByLabel('Tags').blur()
   await expect(page.getByText('playwright').first()).toBeVisible()
 
-  await page.locator('.tiptap').fill('Markdown content from Playwright')
+  await panelEditor(page).fill('Markdown content from Playwright')
   await page.keyboard.press('Escape')
   await page.getByTestId('project-card').filter({ hasText: title }).click()
   await page.getByRole('navigation', { name: 'Breadcrumb', includeHidden: true }).getByRole('button', { name: title }).click()
-  await expect(page.locator('.tiptap')).toContainText('Markdown content from Playwright')
+  await expect(panelEditor(page)).toContainText('Markdown content from Playwright')
 })
 
 test('project cards enter the place and breadcrumb opens details', async ({ page }) => {

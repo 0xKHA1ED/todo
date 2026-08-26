@@ -51,6 +51,7 @@ export function PromoteDialog({ item, open, onOpenChange }: PromoteDialogProps) 
       })
       toast({ title: 'Promoted to problem stage' })
       onOpenChange(false)
+      useUIStore.getState().setInboxOpen(false)
       enterPlace(created.id)
     } catch (error) {
       toast({

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { addProject, requireE2ECredentials, requireSystemRoleMigration, signIn } from './helpers'
+import { addProject, panelEditor, requireE2ECredentials, requireSystemRoleMigration, signIn } from './helpers'
 
 test.beforeEach(async () => {
   requireE2ECredentials()
@@ -11,7 +11,7 @@ test('inline checklists update step progress and auto-complete the node', async 
   const title = `Checklist ${Date.now()}`
   await addProject(page, title)
 
-  const editor = page.locator('.tiptap')
+  const editor = panelEditor(page)
   await editor.click()
   await page.getByRole('button', { name: 'Checklist' }).click()
   await page.keyboard.type('Bring ID')
@@ -20,7 +20,7 @@ test('inline checklists update step progress and auto-complete the node', async 
 
   await expect(page.getByText('0/2 steps').first()).toBeVisible()
 
-  const checkboxes = page.locator('.tiptap input[type="checkbox"]')
+  const checkboxes = editor.locator('input[type="checkbox"]')
   await expect(checkboxes).toHaveCount(2)
 
   await checkboxes.nth(0).check()

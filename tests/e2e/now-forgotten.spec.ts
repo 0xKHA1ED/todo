@@ -1,5 +1,5 @@
 import { expect, test, type Response } from '@playwright/test'
-import { fitCanvas, openMapTab, requireE2ECredentials, seedNodeTree, signIn } from './helpers'
+import { fitCanvas, goHome, openMapTab, requireE2ECredentials, seedNodeTree, signIn } from './helpers'
 
 test.beforeEach(requireE2ECredentials)
 
@@ -75,7 +75,7 @@ test('Forgotten opens a stale leaf and visit persists across reload', async ({ p
   await logoVisit
 
   const homeEntered = page.waitForResponse(isVisitNodesWrite)
-  await page.getByRole('button', { name: 'Home' }).click()
+  await goHome(page)
   await page.reload()
   await homeEntered
   await expect(page.getByRole('button', { name: 'Forgotten Standup' })).toBeVisible()

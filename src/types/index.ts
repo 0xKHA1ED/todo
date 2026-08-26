@@ -1,4 +1,30 @@
 import type { Node, Edge } from '@xyflow/react'
+import type {
+  BreakGlass,
+  DecisionLogEntry,
+  DomainTag,
+  Health,
+  NodeKind,
+  PmStatus,
+  StageDocsMap,
+  StageStatusMap,
+  StageSummariesMap,
+  WorkflowStage,
+} from '@/lib/life-pm/types'
+
+export type {
+  BreakGlass,
+  DecisionLogEntry,
+  DomainTag,
+  Health,
+  NodeKind,
+  PmStatus,
+  StageDocsMap,
+  StageStatusMap,
+  StageSummariesMap,
+  ViewMode,
+  WorkflowStage,
+} from '@/lib/life-pm/types'
 
 export type Urgency = 'low' | 'normal' | 'high'
 
@@ -19,6 +45,18 @@ export interface NodeRecord {
   created_at: string
   updated_at: string
   last_visited_at: string | null
+  kind: NodeKind | null
+  pm_status: PmStatus
+  outcome: string
+  domain_tag: DomainTag | null
+  health: Health | null
+  workflow_stage: WorkflowStage | null
+  stage_status: StageStatusMap
+  stage_docs: StageDocsMap
+  stage_summaries: StageSummariesMap
+  decisions: DecisionLogEntry[]
+  open_questions: string[]
+  break_glass: BreakGlass | null
 }
 
 export interface CreateNodePayload {
@@ -30,10 +68,48 @@ export interface CreateNodePayload {
   tags?: string[]
   description?: string
   sort_order?: number
+  kind?: NodeKind | null
+  pm_status?: PmStatus
+  outcome?: string
+  domain_tag?: DomainTag | null
+  health?: Health | null
+  workflow_stage?: WorkflowStage | null
+  stage_status?: StageStatusMap
+  stage_docs?: StageDocsMap
+  stage_summaries?: StageSummariesMap
+  decisions?: DecisionLogEntry[]
+  open_questions?: string[]
+  break_glass?: BreakGlass | null
+  confirmContainer?: boolean
 }
 
 export type UpdateNodePayload = Partial<
-  Pick<NodeRecord, 'parent_id' | 'title' | 'completed' | 'urgency' | 'date' | 'tags' | 'description' | 'position_x' | 'position_y' | 'sort_order' | 'last_visited_at'>
+  Pick<
+    NodeRecord,
+    | 'parent_id'
+    | 'title'
+    | 'completed'
+    | 'urgency'
+    | 'date'
+    | 'tags'
+    | 'description'
+    | 'position_x'
+    | 'position_y'
+    | 'sort_order'
+    | 'last_visited_at'
+    | 'kind'
+    | 'pm_status'
+    | 'outcome'
+    | 'domain_tag'
+    | 'health'
+    | 'workflow_stage'
+    | 'stage_status'
+    | 'stage_docs'
+    | 'stage_summaries'
+    | 'decisions'
+    | 'open_questions'
+    | 'break_glass'
+  >
 >
 
 export interface NodeProgressSummary {

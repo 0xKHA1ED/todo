@@ -1,5 +1,5 @@
 import { expect, test, type Response } from '@playwright/test'
-import { closePanel, fitCanvas, requireE2ECredentials, seedNodeTree, selectNodeByTitle, signIn } from './helpers'
+import { addProject, closePanel, requireE2ECredentials, seedNodeTree, signIn } from './helpers'
 
 test.beforeEach(requireE2ECredentials)
 
@@ -10,72 +10,59 @@ function isParentWrite(response: Response) {
   return (response.request().postData() ?? '').includes('parent_id')
 }
 
-test('panel edits title, urgency, date, tags, and markdown content', async ({ page }) => {
+test('panel edits title, outcome, tags, and markdown content', async ({ page }) => {
   await signIn(page)
-  await expect(page.getByText('Add a project')).toBeVisible()
-  await page.getByRole('button', { name: 'Add' }).click()
-  await expect(page.getByLabel('Title')).toBeFocused()
-
   const title = `Edited ${Date.now()}`
-  await page.getByLabel('Title').fill(title)
-  await page.getByLabel('Title').blur()
+  await addProject(page, title)
   await expect(page.getByText(title).first()).toBeVisible()
 
-  await page.getByRole('button', { name: 'high' }).click()
-  await page.getByLabel('Date badge').fill('2026-05-04')
+  await page.getByLabel('Outcome').fill('Ship the migration')
+  await page.getByLabel('Outcome').blur()
   await page.getByLabel('Tags').fill('e2e, playwright')
   await page.getByLabel('Tags').blur()
   await expect(page.getByText('playwright').first()).toBeVisible()
 
   await page.locator('.tiptap').fill('Markdown content from Playwright')
   await page.keyboard.press('Escape')
-  await selectNodeByTitle(page, title)
+  await page.getByTestId('project-card').filter({ hasText: title }).click()
+  await page.getByRole('navigation', { name: 'Breadcrumb', includeHidden: true }).getByRole('button', { name: title }).click()
   await expect(page.locator('.tiptap')).toContainText('Markdown content from Playwright')
 })
 
-test('area nodes open details from the canvas and breadcrumb', async ({ page }) => {
+test('project cards enter the place and breadcrumb opens details', async ({ page }) => {
   await signIn(page)
   const projectTitle = `Project ${Date.now()}`
   await seedNodeTree([
-    { title: projectTitle },
-    { title: `Child ${Date.now()}`, parentTitle: projectTitle },
+    { title: projectTitle, kind: 'project' },
+    { title: `Child ${Date.now()}`, parentTitle: projectTitle, kind: 'module' },
   ])
 
   await page.reload()
-  await fitCanvas(page)
-  const projectNode = page.locator('.react-flow__node', { hasText: projectTitle })
-  await expect(projectNode).toBeVisible()
-  await projectNode.dblclick()
+  await page.getByTestId('project-card').filter({ hasText: projectTitle }).click()
   await expect(page.getByRole('navigation', { name: 'Breadcrumb', includeHidden: true })).toContainText(projectTitle)
+  await expect(page.getByTestId('module-hub')).toBeVisible()
 
   await page.getByRole('button', { name: 'Back' }).click()
-  await fitCanvas(page)
-  await expect(page.getByRole('button', { name: `Open details for ${projectTitle}` })).toBeVisible()
-  await page.getByRole('button', { name: `Open details for ${projectTitle}` }).click()
+  await expect(page.getByTestId('portfolio-dashboard')).toBeVisible()
+  await page.getByTestId('project-card').filter({ hasText: projectTitle }).click()
+  await page.getByRole('navigation', { name: 'Breadcrumb', includeHidden: true }).getByRole('button', { name: projectTitle }).click()
   await expect(page.getByLabel('Title')).toHaveValue(projectTitle)
   await closePanel(page)
-
-  await projectNode.dblclick()
-  const breadcrumb = page.getByRole('navigation', { name: 'Breadcrumb', includeHidden: true })
-  await breadcrumb.getByRole('button', { name: projectTitle }).click()
-  await expect(page.getByLabel('Title')).toHaveValue(projectTitle)
 })
 
 test('panel move re-parents a subtree under any destination', async ({ page }) => {
   await signIn(page)
   await seedNodeTree([
-    { title: 'Project A' },
-    { title: 'Task A', parentTitle: 'Project A' },
-    { title: 'Project B' },
+    { title: 'Project A', kind: 'project', workflow_stage: 'execute' },
+    { title: 'Task A', parentTitle: 'Project A', kind: 'task' },
+    { title: 'Project B', kind: 'project', workflow_stage: 'execute' },
   ])
   await page.reload()
-  await fitCanvas(page)
 
-  const source = page.locator('.react-flow__node', { hasText: 'Project A' })
-  await expect(source).toBeVisible()
-
-  await page.getByRole('button', { name: 'Open details for Project A' }).click()
-  await expect(page.getByLabel('Title')).toHaveValue('Project A')
+  await page.getByTestId('project-card').filter({ hasText: 'Project A' }).click()
+  await expect(page.getByText('Task A')).toBeVisible()
+  await page.getByRole('button', { name: 'Task A' }).click()
+  await expect(page.getByLabel('Title')).toHaveValue('Task A')
   await page.getByRole('button', { name: 'Move subtree' }).click()
   await page.getByPlaceholder('Search destinations...').fill('Project B')
   const parentSaved = page.waitForResponse(isParentWrite)
@@ -84,14 +71,7 @@ test('panel move re-parents a subtree under any destination', async ({ page }) =
 
   await expect(page.getByRole('dialog').last().getByText('Inside Project B', { exact: true })).toBeVisible()
   await page.reload()
-  await fitCanvas(page)
-
-  const projectB = page.locator('.react-flow__node', { hasText: 'Project B' })
-  await expect(projectB).toBeVisible()
-  await projectB.dblclick()
-
-  const movedArea = page.locator('.react-flow__node', { hasText: 'Project A' })
-  await expect(movedArea).toBeVisible()
-  await movedArea.dblclick()
-  await expect(page.locator('.react-flow__node', { hasText: 'Task A' })).toBeVisible()
+  await page.getByRole('button', { name: 'Home' }).click()
+  await page.getByTestId('project-card').filter({ hasText: 'Project B' }).click()
+  await expect(page.getByText('Task A')).toBeVisible()
 })

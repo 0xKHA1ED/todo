@@ -7,8 +7,8 @@ import { Toaster } from '@/components/ui/toaster'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Mindmap Tasks',
-  description: 'A keyboard-first visual mindmap task manager backed by Supabase.',
+  title: 'Life PM',
+  description: 'Portfolio-first project stewardship with an enforced think-then-do workflow.',
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

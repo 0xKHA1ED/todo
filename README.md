@@ -1,25 +1,39 @@
-# Mindmap Tasks
+# Life PM
 
-A personal productivity app that treats life as nested places. You always stand in one place (Home, a project, or an area) and see Now, Forgotten, and hybrid-weighted direct children — never the whole-life forest. Built with Next.js (static export), Supabase, React Flow, TipTap, and Shadcn UI. Deploys to GitHub Pages.
+A personal **project stewardship** app: portfolio of life projects, nested modules, and a gated think-then-do workflow. Capture still lives in Inbox (`C`). Execution still has Now, Forgotten, lenses, and a mind map — inside a project or module, not as the home screen. Built with Next.js (static export), Supabase, React Flow, TipTap, and Shadcn UI. Deploys to GitHub Pages.
 
 ---
 
 ## Features
 
-- **Place UI** — Opening the app always stands you at **Home** (the hidden root). Nested descendants stay packed inside child area cards until you enter that place.
-- **Inbox ritual** — Every user gets a dedicated Inbox place under Home. Press **C** from the map to quick-capture a task from anywhere, optionally parsing trailing `#tags`, then file it later by clicking a visible subtree on the map or searching destinations from the filing banner.
-- **Now** — Up to **5** urgent tasks from the current place’s subtree (overdue, due today, next 7 days, then high-urgency undated). Extra matches show as a quiet “N more” count.
-- **Forgotten** — Exactly one stale child of the current place. Prefers an area whose `last_visited_at` is null or older than **14 days**; otherwise the oldest stale leaf not already in Now. Hidden when nothing is stale.
-- **Context lenses** — At Home, toggle **Errands**, **At computer**, **Calls**, or **At home** to see incomplete tagged leaves across the full tree without opening a second task view.
-- **Hybrid densities** — Direct children only, weighted Loud / Medium / Area / Compact. Progress, tags, and full urgency live in the detail panel, not on every card.
-- **Add** always creates a child of the current place. **Show done** reveals completed nodes (compact, struck through).
-- **Inline checklists** — TipTap descriptions support checklist blocks from the toolbar or **Mod+Shift+9**, live step counts in the panel, `- [ ]` markdown conversion, and auto-complete when every step is checked.
-- TipTap WYSIWYG rich-text description per node (Notion-style)
-- Slide-out detail panel without leaving the place
-- Keyboard: **C** opens quick capture from anywhere; **Tab** on a selected non-root node creates a child and enters that place; **Enter** enters an area (has children) or opens the panel; **Delete** deletes (not Backspace)
-- Drag-and-drop re-parenting among visible children of the current place (entire subtree moves with the node)
-- Command palette (**Ctrl+K**) — searches titles and markdown content, then jumps to the hit’s **parent place** (not viewport pan)
+- **Portfolio Home** — `/map` opens a **project card grid** grouped by domain and status (Active / Paused / Ideas / Done). Not a mind map.
+- **Hierarchy** — `domain → project → module` (modules nest without depth limit) → `task`. Container nodes (with child modules) show a hub; leaf nodes run workflow.
+- **6-stage workflow** on every **leaf** project or module: Problem → Shape → Plan → Spec → Execute → Review. Later stages stay locked until you sign off. Tasks can only be created in **Execute**.
+- **Think mode** — Split layout: stage checklist on the left, TipTap stage document on the right, traffic-light stage strip, **Copy Cursor prompt** and **Import session MD**.
+- **Do mode** — List is the default in Execute; Map is a tab (existing mind map). Now (max 5) sits in the Execute sidebar.
+- **Cursor handoff** — No in-app AI. Copy a kickstart prompt, facilitate in Cursor with `@life-pm`, import the session export markdown back into the app. Import never auto-advances gates.
+- **Break-glass** — Emergency skip to Execute with a required reason; flagged on the module and used in portfolio attention pick.
+- **Inbox** — Header badge + slide-over. **File as task** (only onto Execute leaves) or **Promote to project/module** (starts at Problem, seed text in the Problem doc). Quick capture **C** still works everywhere.
+- **Attention line** — Each project card shows at most **one** descendant module title (muted) using the locked priority algorithm.
+- **Forgotten** — One stale leaf surfaced on the portfolio.
+- **Context lenses** — Portfolio toolbar: Errands / At computer / Calls / At home.
+- **Persistence** — `currentPlaceId` and `viewMode` are stored in `localStorage`.
+- **Inline checklists** — TipTap descriptions support checklist blocks, step counts, and auto-complete.
+- Keyboard: **C** capture, **⌘K / Ctrl+K** search, **Delete** deletes the selected node (not Backspace)
 - Email/Password auth via Supabase Auth with Row-Level Security
+
+### Life PM workflow (leaf projects and modules)
+
+| Stage | You produce | Gate |
+|-------|-------------|------|
+| Problem | Pain, who, why now, constraints, not-solving | Written + sign-off |
+| Shape | ≥3 options, tradeoffs, chosen direction | Direction + sign-off |
+| Plan | Approach, phases, risks, non-goals | Ready for Spec |
+| Spec | Requirements, acceptance criteria, verification | Ready for Execute |
+| Execute | Tasks with definition of done | All tasks done |
+| Review | Problem revisited, surprises, learnings | Required to close a **project**; optional for modules |
+
+Session markdown format: [`docs/life-pm/session-md-format.md`](docs/life-pm/session-md-format.md).
 
 ### Context Tags
 
@@ -116,8 +130,9 @@ Open the **SQL Editor** in your Supabase dashboard and run the migrations **in o
 2. [`supabase/migrations/002_add_node_completion.sql`](supabase/migrations/002_add_node_completion.sql) — adds `nodes.completed`.
 3. [`supabase/migrations/003_add_last_visited_at.sql`](supabase/migrations/003_add_last_visited_at.sql) — adds `nodes.last_visited_at` (nullable timestamptz). Existing rows stay null (never visited) and are eligible for Forgotten. Standing in a place sets `last_visited_at` on that node and its ancestors.
 4. [`supabase/migrations/004_add_system_role.sql`](supabase/migrations/004_add_system_role.sql) — adds `nodes.system_role` and the per-user Inbox uniqueness index used by quick capture and Home Inbox surfacing.
+5. [`supabase/migrations/005_life_pm.sql`](supabase/migrations/005_life_pm.sql) — Life PM columns (`kind`, `pm_status`, `outcome`, `domain_tag`, `health`, `workflow_stage`, `stage_docs`, `decisions`, `break_glass`, …) and backfill of existing Home children as grandfathered Execute projects.
 
-If the project already has `001` applied, still run `002`, `003`, and `004`. Inbox, quick capture, and context lenses require `004`.
+If the project already has `001` applied, still run `002`–`005`. Inbox and lenses require `004`. Portfolio, workflow, and session import require `005`.
 
 ### 3. Enable Email/Password auth
 
@@ -250,7 +265,7 @@ E2E_USER_EMAIL=...
 E2E_USER_PASSWORD=...
 ```
 
-If the shared Supabase test database has not applied [`supabase/migrations/004_add_system_role.sql`](supabase/migrations/004_add_system_role.sql), the new Inbox/lens Playwright specs will skip with a migration reminder.
+If the shared Supabase test database has not applied [`supabase/migrations/004_add_system_role.sql`](supabase/migrations/004_add_system_role.sql) or [`supabase/migrations/005_life_pm.sql`](supabase/migrations/005_life_pm.sql), the Inbox/lens/Life PM Playwright specs will skip with a migration reminder.
 
 ---
 
@@ -260,24 +275,28 @@ If the shared Supabase test database has not applied [`supabase/migrations/004_a
 src/
 ├── app/                  # Next.js App Router pages
 │   ├── login/            # Email/password login page
-│   └── map/              # Place screen (auth-protected)
+│   └── map/              # Place screen (auth-protected) — portfolio / hub / think / list / map
 ├── components/
 │   ├── auth/             # AuthGuard, LoginForm
 │   ├── canvas/           # Place-scoped React Flow, custom node/edge, toolbar
 │   ├── palette/          # Command palette (Ctrl+K)
 │   ├── panel/            # Slide-out detail panel, Markdown editor
-│   ├── place/            # PlaceScreen, breadcrumb, Now, Forgotten
+│   ├── place/            # PlaceScreen, header, breadcrumb, Inbox sheet, Now, Forgotten
+│   ├── portfolio/        # Portfolio dashboard, project cards, module hubs
+│   ├── workflow/         # Think dashboard, stage strip, import/sign-off/break-glass
 │   └── ui/               # Shadcn UI primitives
 ├── hooks/                # useCommandSearch, useKeyboardNav
 ├── lib/
 │   ├── editor/           # TipTap extensions
 │   ├── flow/             # Compact tree layout + progress rollup helpers
+│   ├── life-pm/          # Workflow model, session MD parser, Cursor prompt builder
 │   ├── place/            # Now, Forgotten, density, visit targets
+│   ├── portfolio/        # Domain grouping + attention-module pick
 │   ├── store/            # Zustand stores (auth, nodes, UI)
 │   └── supabase/         # Supabase client + CRUD queries
 └── types/                # Shared TypeScript types
 supabase/
-├── migrations/           # SQL migration files (001, 002, 003, 004)
+├── migrations/           # SQL migration files (001–005)
 └── seed.sql              # Notes on seeding
 tests/
 └── e2e/                  # Playwright test specs

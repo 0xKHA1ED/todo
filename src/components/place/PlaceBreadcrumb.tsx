@@ -86,6 +86,11 @@ export function PlaceBreadcrumb() {
                   }}
                 >
                   {node.title}
+                  {node.kind ? (
+                    <span className="ml-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      {node.kind}
+                    </span>
+                  ) : null}
                 </Button>
               </li>
             )

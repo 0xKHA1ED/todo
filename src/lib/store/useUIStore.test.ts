@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { useUIStore } from './useUIStore'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { LIFE_PM_UI_KEY, useUIStore } from './useUIStore'
 
 function resetStore() {
   useUIStore.setState({
@@ -7,9 +7,11 @@ function resetStore() {
     isPanelOpen: false,
     isCommandPaletteOpen: false,
     isQuickCaptureOpen: false,
+    isInboxOpen: false,
     filingNodeId: null,
     activeLensId: null,
     currentPlaceId: null,
+    viewMode: 'portfolio',
     showDone: false,
     titleFocusRequest: null,
   })
@@ -90,6 +92,7 @@ describe('useUIStore', () => {
     useUIStore.getState().resetPlace()
     expect(useUIStore.getState()).toMatchObject({
       currentPlaceId: null,
+      viewMode: 'portfolio',
       showDone: false,
       selectedNodeId: null,
       isPanelOpen: false,
@@ -107,6 +110,29 @@ describe('useUIStore', () => {
     expect(focused.isPanelOpen).toBe(true)
     useUIStore.getState().clearTitleFocusRequest()
     expect(useUIStore.getState().titleFocusRequest).toBeNull()
+  })
+
+  it('persists currentPlaceId and viewMode to localStorage', () => {
+    const memory: Record<string, string> = {}
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: (key: string) => memory[key] ?? null,
+        setItem: (key: string, value: string) => {
+          memory[key] = value
+        },
+        removeItem: (key: string) => {
+          delete memory[key]
+        },
+      },
+    })
+
+    useUIStore.getState().enterPlace('place-9')
+    useUIStore.getState().setViewMode('think')
+    expect(JSON.parse(memory[LIFE_PM_UI_KEY] ?? '{}')).toEqual({
+      currentPlaceId: 'place-9',
+      viewMode: 'think',
+    })
+    vi.unstubAllGlobals()
   })
 
   it('setActiveLensId and setQuickCaptureOpen both clear filing state', () => {

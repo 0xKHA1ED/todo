@@ -2,10 +2,21 @@
 
 import { create } from 'zustand'
 import { visitTargetIds } from '@/lib/place/placeModel'
+import { ContainerConversionError } from '@/lib/life-pm/errors'
+import { mergeImportedSession } from '@/lib/life-pm/importSession'
+import { newLeafStageStatus } from '@/lib/life-pm/types'
+import {
+  canCreateTask,
+  canSignOff,
+  defaultKindForParent,
+  isWorkflowLeaf,
+  nextStage,
+  validateChildKind,
+} from '@/lib/life-pm/workflowModel'
 import * as queries from '@/lib/supabase/queries'
 import { useAuthStore } from '@/lib/store/useAuthStore'
-import { defaultEditorContent } from '@/lib/utils'
-import type { CreateNodePayload, NodeRecord, UpdateNodePayload } from '@/types'
+import { defaultEditorContent, getPlainTextFromTipTap } from '@/lib/utils'
+import type { CreateNodePayload, NodeKind, NodeRecord, UpdateNodePayload } from '@/types'
 
 const ROOT_TITLE = 'Main'
 const INBOX_TITLE = 'Inbox'
@@ -59,6 +70,35 @@ async function ensureSystemNodes(userId: string, existingNodes: NodeRecord[]) {
   return nodes
 }
 
+function defaultTitleForKind(kind: NodeKind): string {
+  if (kind === 'domain') return 'New Domain'
+  if (kind === 'project') return 'New Project'
+  if (kind === 'module') return 'New Module'
+  return 'New Task'
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function pmInsertForKind(kind: NodeKind, payload: CreateNodePayload) {
+  const isWorkflowKind = kind === 'project' || kind === 'module'
+  return {
+    kind,
+    pm_status: payload.pm_status ?? 'active',
+    outcome: payload.outcome ?? '',
+    domain_tag: payload.domain_tag ?? null,
+    health: payload.health ?? null,
+    workflow_stage: payload.workflow_stage ?? (isWorkflowKind ? 'problem' : null),
+    stage_status: payload.stage_status ?? (isWorkflowKind ? newLeafStageStatus() : {}),
+    stage_docs: payload.stage_docs ?? {},
+    stage_summaries: payload.stage_summaries ?? {},
+    decisions: payload.decisions ?? [],
+    open_questions: payload.open_questions ?? [],
+    break_glass: payload.break_glass ?? null,
+  }
+}
+
 interface NodeStore {
   nodes: NodeRecord[]
   loading: boolean
@@ -66,6 +106,14 @@ interface NodeStore {
   fetchAllNodes: () => Promise<void>
   createNode: (payload: CreateNodePayload) => Promise<NodeRecord>
   updateNode: (id: string, patch: UpdateNodePayload) => Promise<void>
+  importSessionMd: (nodeId: string, rawMd: string) => Promise<{ warnings: string[] }>
+  signOffStage: (nodeId: string) => Promise<void>
+  skipReview: (nodeId: string) => Promise<void>
+  breakGlassToExecute: (nodeId: string, reason: string) => Promise<void>
+  promoteInboxItem: (
+    inboxItemId: string,
+    options: { kind: 'project' | 'module'; parentId: string; title?: string },
+  ) => Promise<NodeRecord>
   deleteNode: (id: string) => Promise<void>
   reparentNode: (id: string, newParentId: string | null) => Promise<void>
   markVisited: (placeId: string) => Promise<void>
@@ -118,17 +166,37 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
 
   async createNode(payload) {
     const userId = requireUserId()
-    const siblings = get().nodes.filter((node) => node.parent_id === payload.parent_id)
+    const nodes = get().nodes
+    const parent = payload.parent_id ? nodes.find((node) => node.id === payload.parent_id) ?? null : null
+    const kind = payload.kind ?? (parent ? defaultKindForParent(parent, nodes) : 'project')
+
+    if (parent) {
+      if (
+        kind === 'module' &&
+        (parent.kind === 'project' || parent.kind === 'module') &&
+        isWorkflowLeaf(parent, nodes)
+      ) {
+        const pastProblem = parent.workflow_stage && parent.workflow_stage !== 'problem'
+        if (pastProblem && !payload.confirmContainer) {
+          throw new ContainerConversionError()
+        }
+      }
+      const invalid = validateChildKind(parent, kind, nodes)
+      if (invalid) throw new Error(invalid)
+    }
+
+    const siblings = nodes.filter((node) => node.parent_id === payload.parent_id)
     const created = await queries.createNode({
       user_id: userId,
       parent_id: payload.parent_id,
       system_role: payload.system_role ?? null,
-      title: payload.title ?? 'New Task',
+      title: payload.title ?? defaultTitleForKind(kind),
       urgency: payload.urgency ?? 'normal',
       date: payload.date ?? null,
       tags: payload.tags ?? [],
       description: payload.description ?? defaultEditorContent(),
       sort_order: payload.sort_order ?? siblings.length,
+      ...pmInsertForKind(kind, payload),
     })
     set((state) => ({ nodes: sortNodes([...state.nodes, created]) }))
     return created
@@ -145,6 +213,89 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
       set({ nodes: previous })
       throw error
     }
+  },
+
+  async importSessionMd(nodeId, rawMd) {
+    const node = get().nodes.find((candidate) => candidate.id === nodeId)
+    if (!node) throw new Error('Node not found.')
+    const merged = mergeImportedSession(node, rawMd)
+    if (!merged.ok) {
+      throw new Error(merged.errors.join('\n'))
+    }
+    if (merged.patch) {
+      await get().updateNode(nodeId, merged.patch)
+    }
+    return { warnings: merged.warnings }
+  },
+
+  async signOffStage(nodeId) {
+    const nodes = get().nodes
+    const node = nodes.find((candidate) => candidate.id === nodeId)
+    if (!node) throw new Error('Node not found.')
+    if (!isWorkflowLeaf(node, nodes)) throw new Error('Workflow lives on leaf projects and modules.')
+    const current = node.workflow_stage
+    if (!current) throw new Error('No active workflow stage.')
+    if (!canSignOff(node, nodes)) {
+      throw new Error(
+        current === 'execute' ? 'Complete all work items before review.' : 'Finish this stage before signing off.',
+      )
+    }
+    const next = nextStage(current)
+    const stage_status = {
+      ...node.stage_status,
+      [current]: 'complete' as const,
+      ...(next ? { [next]: 'in_progress' as const } : {}),
+    }
+    await get().updateNode(nodeId, {
+      workflow_stage: next ?? current,
+      stage_status,
+      ...(next === null && node.kind === 'project' ? { pm_status: 'done' as const } : {}),
+    })
+  },
+
+  async skipReview(nodeId) {
+    const nodes = get().nodes
+    const node = nodes.find((candidate) => candidate.id === nodeId)
+    if (!node) throw new Error('Node not found.')
+    if (node.kind !== 'module') throw new Error('Only modules can skip review.')
+    if (node.workflow_stage === 'execute' && !canSignOff(node, nodes)) {
+      throw new Error('Complete all work items before skipping review.')
+    }
+    await get().updateNode(nodeId, {
+      workflow_stage: 'review',
+      stage_status: { ...node.stage_status, execute: 'complete', review: 'complete' },
+      pm_status: node.pm_status === 'active' ? 'done' : node.pm_status,
+    })
+  },
+
+  async breakGlassToExecute(nodeId, reason) {
+    const trimmed = reason.trim()
+    if (!trimmed) throw new Error('A reason is required to skip ahead.')
+    const node = get().nodes.find((candidate) => candidate.id === nodeId)
+    if (!node) throw new Error('Node not found.')
+    await get().updateNode(nodeId, {
+      workflow_stage: 'execute',
+      break_glass: { used: true, reason: trimmed, at: new Date().toISOString() },
+      stage_status: { ...node.stage_status, execute: 'in_progress' },
+    })
+  },
+
+  async promoteInboxItem(inboxItemId, options) {
+    const item = get().nodes.find((candidate) => candidate.id === inboxItemId)
+    if (!item) throw new Error('Inbox item not found.')
+    const extra = getPlainTextFromTipTap(item.description)
+    const seed = extra && extra !== item.title ? `${item.title}. ${extra}` : item.title
+    const created = await get().createNode({
+      parent_id: options.parentId,
+      kind: options.kind,
+      title: options.title?.trim() || item.title,
+      workflow_stage: 'problem',
+      stage_status: newLeafStageStatus(),
+      stage_docs: { problem: `<h2>Problem statement</h2><p>${escapeHtml(seed)}</p>` },
+      stage_summaries: { problem: item.title },
+    })
+    await get().deleteNode(inboxItemId)
+    return created
   },
 
   async deleteNode(id) {
@@ -171,7 +322,18 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
     if (selected.system_role === 'inbox') throw new Error('Inbox cannot be moved.')
     if (newParentId === id) throw new Error('A node cannot be parented to itself.')
 
-    const nextSortOrder = get().nodes.filter((node) => node.parent_id === newParentId && node.id !== id).length
+    const nodes = get().nodes
+    const parent = newParentId ? nodes.find((node) => node.id === newParentId) ?? null : null
+    const movingKind = selected.kind ?? 'task'
+    if (parent) {
+      if (movingKind === 'task' && parent.kind && !canCreateTask(parent, nodes) && parent.system_role !== 'inbox') {
+        throw new Error('Tasks unlock in Execute. Finish the earlier stages first, or use emergency skip.')
+      }
+      const invalid = validateChildKind(parent, movingKind, nodes)
+      if (invalid && movingKind !== 'task') throw new Error(invalid)
+    }
+
+    const nextSortOrder = nodes.filter((node) => node.parent_id === newParentId && node.id !== id).length
 
     const previous = get().nodes
     set((state) => ({

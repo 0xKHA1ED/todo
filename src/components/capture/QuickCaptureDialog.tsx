@@ -46,7 +46,7 @@ export function QuickCaptureDialog({ open, onOpenChange }: QuickCaptureDialogPro
 
     try {
       setSubmitting(true)
-      await createNode({ parent_id: inboxId, title: parsed.title, tags: parsed.tags })
+      await createNode({ parent_id: inboxId, title: parsed.title, tags: parsed.tags, kind: 'task' })
       toast({ title: 'Captured' })
       onOpenChange(false)
     } catch (error) {

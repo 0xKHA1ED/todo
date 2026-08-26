@@ -1,16 +1,13 @@
 import { expect, test } from '@playwright/test'
-import { requireE2ECredentials, signIn } from './helpers'
+import { addProject, requireE2ECredentials, signIn } from './helpers'
 
 test.beforeEach(requireE2ECredentials)
 
 test('ctrl+k searches nodes and opens the selected result', async ({ page }) => {
   await signIn(page)
-  await expect(page.getByText('Add a project')).toBeVisible()
-  await page.getByRole('button', { name: 'Add' }).click()
-  await expect(page.getByLabel('Title')).toBeFocused()
   const title = `Palette ${Date.now()}`
-  await page.getByLabel('Title').fill(title)
-  await page.getByLabel('Title').blur()
+  await addProject(page, title)
+  await page.keyboard.press('Escape')
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K')
   await page.getByPlaceholder('Search titles and descriptions...').fill(title)
   await expect(page.getByRole('option', { name: new RegExp(title) })).toBeVisible()

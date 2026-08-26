@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { LIFE_PM_DEFAULTS } from '@/lib/life-pm/types'
 import type { CreateNodePayload, NodeRecord } from '@/types'
 
 vi.mock('@/lib/supabase/queries', () => ({
@@ -33,6 +34,7 @@ function record(partial: Partial<NodeRecord> & Pick<NodeRecord, 'id' | 'title'>)
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
     last_visited_at: null,
+    ...LIFE_PM_DEFAULTS,
     ...partial,
   }
 }
@@ -59,13 +61,119 @@ describe('useNodeStore.createNode', () => {
   it('defaults sort_order to the sibling count and appends the created node', async () => {
     setNodes([
       record({ id: 'home', title: 'Main', parent_id: null }),
-      record({ id: 'a', title: 'A', sort_order: 0 }),
+      record({ id: 'a', title: 'A', sort_order: 0, kind: 'project', workflow_stage: 'execute' }),
     ])
 
-    const created = await useNodeStore.getState().createNode({ parent_id: 'home', title: 'B' })
+    const created = await useNodeStore.getState().createNode({ parent_id: 'home', title: 'B', kind: 'project' })
 
-    expect(mocked.createNode).toHaveBeenCalledWith(expect.objectContaining({ parent_id: 'home', title: 'B', sort_order: 1 }))
+    expect(mocked.createNode).toHaveBeenCalledWith(expect.objectContaining({ parent_id: 'home', title: 'B', sort_order: 1, kind: 'project' }))
     expect(useNodeStore.getState().nodes.some((node) => node.id === created.id)).toBe(true)
+  })
+
+  it('rejects creating a task when the parent is still in problem', async () => {
+    setNodes([
+      record({ id: 'home', title: 'Main', parent_id: null }),
+      record({ id: 'mod', title: 'Token', kind: 'module', workflow_stage: 'problem' }),
+    ])
+
+    await expect(useNodeStore.getState().createNode({ parent_id: 'mod', title: 'Task', kind: 'task' })).rejects.toThrow(
+      /Tasks unlock in Execute/,
+    )
+    expect(mocked.createNode).not.toHaveBeenCalled()
+  })
+
+  it('allows creating a task when the parent is in execute', async () => {
+    setNodes([
+      record({ id: 'home', title: 'Main', parent_id: null }),
+      record({ id: 'mod', title: 'Token', kind: 'module', workflow_stage: 'execute' }),
+    ])
+
+    await useNodeStore.getState().createNode({ parent_id: 'mod', title: 'Work item', kind: 'task' })
+    expect(mocked.createNode).toHaveBeenCalledWith(expect.objectContaining({ kind: 'task', title: 'Work item' }))
+  })
+
+  it('allows nested module → module creation', async () => {
+    setNodes([
+      record({ id: 'home', title: 'Main', parent_id: null }),
+      record({ id: 'proj', title: 'Platform', kind: 'project', workflow_stage: 'problem' }),
+      record({ id: 'auth', title: 'Auth', parent_id: 'proj', kind: 'module', workflow_stage: 'problem' }),
+    ])
+
+    await useNodeStore.getState().createNode({ parent_id: 'auth', title: 'Token refresh', kind: 'module' })
+    expect(mocked.createNode).toHaveBeenCalledWith(expect.objectContaining({ parent_id: 'auth', kind: 'module' }))
+  })
+
+  it('rejects an invalid parent/kind pair', async () => {
+    setNodes([
+      record({ id: 'home', title: 'Main', parent_id: null }),
+      record({ id: 'domain', title: 'IMS', kind: 'domain' }),
+    ])
+
+    await expect(useNodeStore.getState().createNode({ parent_id: 'domain', title: 'Nope', kind: 'task' })).rejects.toThrow(
+      /Cannot create a task/,
+    )
+  })
+
+  it('requires confirm before converting a progressed leaf into a container', async () => {
+    setNodes([
+      record({ id: 'home', title: 'Main', parent_id: null }),
+      record({ id: 'mod', title: 'Auth', kind: 'module', workflow_stage: 'shape' }),
+    ])
+
+    await expect(useNodeStore.getState().createNode({ parent_id: 'mod', kind: 'module', title: 'Tokens' })).rejects.toThrow(
+      /grouping folder/,
+    )
+    expect(mocked.createNode).not.toHaveBeenCalled()
+
+    await useNodeStore.getState().createNode({ parent_id: 'mod', kind: 'module', title: 'Tokens', confirmContainer: true })
+    expect(mocked.createNode).toHaveBeenCalledWith(expect.objectContaining({ kind: 'module', title: 'Tokens' }))
+  })
+})
+
+describe('useNodeStore.workflow helpers', () => {
+  it('promotes an inbox item to a project at problem with seed text', async () => {
+    setNodes([
+      record({ id: 'home', title: 'Main', parent_id: null }),
+      record({ id: 'inbox', title: 'Inbox', system_role: 'inbox' }),
+      record({ id: 'item', title: 'Silent drop', parent_id: 'inbox', kind: 'task' }),
+    ])
+
+    const created = await useNodeStore.getState().promoteInboxItem('item', { kind: 'project', parentId: 'home' })
+    expect(created.kind).toBe('project')
+    expect(created.workflow_stage).toBe('problem')
+    expect(created.stage_docs.problem).toContain('Silent drop')
+    expect(useNodeStore.getState().nodes.some((node) => node.id === 'item')).toBe(false)
+  })
+
+  it('records break-glass and jumps to execute', async () => {
+    setNodes([
+      record({ id: 'home', title: 'Main', parent_id: null }),
+      record({ id: 'mod', title: 'Token', kind: 'module', workflow_stage: 'problem' }),
+    ])
+
+    await useNodeStore.getState().breakGlassToExecute('mod', 'Production outage')
+    const updated = useNodeStore.getState().nodes.find((node) => node.id === 'mod')
+    expect(updated?.workflow_stage).toBe('execute')
+    expect(updated?.break_glass?.used).toBe(true)
+    expect(updated?.break_glass?.reason).toBe('Production outage')
+  })
+
+  it('advances sign-off to the next stage', async () => {
+    setNodes([
+      record({
+        id: 'mod',
+        title: 'Token',
+        kind: 'module',
+        workflow_stage: 'shape',
+        stage_docs: { shape: '<h2>Chosen direction</h2><p>Cookies</p>' },
+        stage_status: { shape: 'in_progress' },
+      }),
+    ])
+
+    await useNodeStore.getState().signOffStage('mod')
+    const updated = useNodeStore.getState().nodes.find((node) => node.id === 'mod')
+    expect(updated?.workflow_stage).toBe('plan')
+    expect(updated?.stage_status.shape).toBe('complete')
   })
 })
 
@@ -201,6 +309,39 @@ describe('useNodeStore.markVisited', () => {
     mocked.updateNode.mockRejectedValueOnce(new Error('offline'))
     await expect(useNodeStore.getState().markVisited('biz')).rejects.toThrow('offline')
     expect(useNodeStore.getState().nodes.every((node) => node.last_visited_at === null)).toBe(true)
+  })
+})
+
+describe('useNodeStore.importSessionMd', () => {
+  it('sets stage_status from the export status field', async () => {
+    const moduleId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+    setNodes([
+      record({
+        id: moduleId,
+        title: 'Token refresh',
+        kind: 'module',
+        workflow_stage: 'problem',
+        stage_status: { problem: 'not_started' },
+      }),
+    ])
+
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const raw = readFileSync(resolve(process.cwd(), 'docs/life-pm/examples/session-export-problem-complete.md'), 'utf8')
+
+    await useNodeStore.getState().importSessionMd(moduleId, raw)
+
+    const updated = useNodeStore.getState().nodes.find((node) => node.id === moduleId)
+    expect(updated?.stage_status.problem).toBe('complete')
+    expect(updated?.stage_docs.problem).toContain('Problem statement')
+    expect(updated?.decisions.length).toBeGreaterThan(0)
+    expect(updated?.open_questions).toEqual([])
+    expect(updated?.workflow_stage).toBe('problem')
+  })
+
+  it('rejects invalid markdown', async () => {
+    setNodes([record({ id: 'mod', title: 'Token refresh', kind: 'module' })])
+    await expect(useNodeStore.getState().importSessionMd('mod', 'nope')).rejects.toThrow(/frontmatter/i)
   })
 })
 

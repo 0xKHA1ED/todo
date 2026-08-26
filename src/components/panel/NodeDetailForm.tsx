@@ -20,11 +20,14 @@ import { parseChecklistProgress, type ChecklistProgress } from '@/lib/editor/che
 import { useNodeStore } from '@/lib/store/useNodeStore'
 import { useUIStore } from '@/lib/store/useUIStore'
 import { cn, parseTags } from '@/lib/utils'
-import type { NodeRecord, Urgency } from '@/types'
+import type { DomainTag, Health, NodeRecord, PmStatus, Urgency } from '@/types'
 import { MoveNodeDialog } from './MoveNodeDialog'
 import { MarkdownEditor } from './MarkdownEditor'
 
 const URGENCIES: Urgency[] = ['low', 'normal', 'high']
+const PM_STATUSES: PmStatus[] = ['idea', 'active', 'paused', 'done', 'archived']
+const DOMAIN_TAGS: DomainTag[] = ['professional', 'home', 'business', 'personal', 'health', 'other']
+const HEALTHS: Health[] = ['on_track', 'at_risk', 'stalled', 'blocked']
 
 interface NodeDetailFormProps {
   node: NodeRecord
@@ -41,6 +44,7 @@ export function NodeDetailForm({ node }: NodeDetailFormProps) {
   const clearTitleFocusRequest = useUIStore((state) => state.clearTitleFocusRequest)
   const titleRef = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState(node.title)
+  const [outcome, setOutcome] = useState(node.outcome)
   const [tags, setTags] = useState(node.tags.join(', '))
   const [checklistProgress, setChecklistProgress] = useState<ChecklistProgress>(() => parseChecklistProgress(node.description))
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -48,12 +52,15 @@ export function NodeDetailForm({ node }: NodeDetailFormProps) {
 
   const nodesById = useMemo(() => new Map(nodes.map((candidate) => [candidate.id, candidate])), [nodes])
   const currentParent = node.parent_id ? nodesById.get(node.parent_id) ?? null : null
+  const isPmNode = node.kind === 'domain' || node.kind === 'project' || node.kind === 'module'
+  const isTask = node.kind === 'task' || node.kind === null
 
   useEffect(() => {
     setTitle(node.title)
+    setOutcome(node.outcome)
     setTags(node.tags.join(', '))
     setChecklistProgress(parseChecklistProgress(node.description))
-  }, [node.description, node.id, node.tags, node.title])
+  }, [node.description, node.id, node.outcome, node.tags, node.title])
 
   useEffect(() => {
     if (titleFocusRequest !== node.id) return
@@ -139,28 +146,102 @@ export function NodeDetailForm({ node }: NodeDetailFormProps) {
         />
       </div>
 
-      <div className="space-y-2">
-        <Label>Urgency</Label>
-        <div className="flex gap-2">
-          {URGENCIES.map((urgency) => (
-            <Button
-              key={urgency}
-              type="button"
-              size="sm"
-              variant={node.urgency === urgency ? 'default' : 'secondary'}
-              className={cn(
-                'capitalize',
-                node.urgency === urgency && urgency === 'low' && 'bg-urgency-low text-zinc-950 hover:bg-urgency-low/90',
-                node.urgency === urgency && urgency === 'normal' && 'bg-urgency-normal text-zinc-950 hover:bg-urgency-normal/90',
-                node.urgency === urgency && urgency === 'high' && 'bg-urgency-high text-white hover:bg-urgency-high/90',
-              )}
-              onClick={() => patchNode({ urgency })}
-            >
-              {urgency}
-            </Button>
-          ))}
+      {isPmNode && (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="node-outcome">Outcome</Label>
+            <Input
+              id="node-outcome"
+              value={outcome}
+              placeholder="Done when…"
+              onChange={(event) => setOutcome(event.target.value)}
+              onBlur={() => {
+                if (outcome !== node.outcome) void patchNode({ outcome })
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <div className="flex flex-wrap gap-2">
+              {PM_STATUSES.map((status) => (
+                <Button
+                  key={status}
+                  type="button"
+                  size="sm"
+                  variant={node.pm_status === status ? 'default' : 'secondary'}
+                  className="capitalize"
+                  onClick={() => patchNode({ pm_status: status })}
+                >
+                  {status}
+                </Button>
+              ))}
+            </div>
+          </div>
+          {node.kind !== 'module' && (
+            <div className="space-y-2">
+              <Label>Domain tag</Label>
+              <div className="flex flex-wrap gap-2">
+                {DOMAIN_TAGS.map((tag) => (
+                  <Button
+                    key={tag}
+                    type="button"
+                    size="sm"
+                    variant={node.domain_tag === tag ? 'default' : 'secondary'}
+                    className="capitalize"
+                    onClick={() => patchNode({ domain_tag: tag })}
+                  >
+                    {tag}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+          {node.kind !== 'domain' && (
+            <div className="space-y-2">
+              <Label>Health</Label>
+              <div className="flex flex-wrap gap-2">
+                {HEALTHS.map((health) => (
+                  <Button
+                    key={health}
+                    type="button"
+                    size="sm"
+                    variant={node.health === health ? 'default' : 'secondary'}
+                    className="capitalize"
+                    onClick={() => patchNode({ health })}
+                  >
+                    {health.replace('_', ' ')}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
+
+      {isTask && (
+        <div className="space-y-2">
+          <Label>Urgency</Label>
+          <div className="flex gap-2">
+            {URGENCIES.map((urgency) => (
+              <Button
+                key={urgency}
+                type="button"
+                size="sm"
+                variant={node.urgency === urgency ? 'default' : 'secondary'}
+                className={cn(
+                  'capitalize',
+                  node.urgency === urgency && urgency === 'low' && 'bg-urgency-low text-zinc-950 hover:bg-urgency-low/90',
+                  node.urgency === urgency && urgency === 'normal' && 'bg-urgency-normal text-zinc-950 hover:bg-urgency-normal/90',
+                  node.urgency === urgency && urgency === 'high' && 'bg-urgency-high text-white hover:bg-urgency-high/90',
+                )}
+                onClick={() => patchNode({ urgency })}
+              >
+                {urgency}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label>Status</Label>

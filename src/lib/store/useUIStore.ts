@@ -1,15 +1,44 @@
 'use client'
 
 import { create } from 'zustand'
+import { isViewModeAllowed, resolveViewMode } from '@/lib/life-pm/workflowModel'
+import type { ViewMode } from '@/lib/life-pm/types'
+import { useNodeStore } from '@/lib/store/useNodeStore'
+
+export const LIFE_PM_UI_KEY = 'life-pm:ui'
+
+function readPersisted(): { currentPlaceId: string | null; viewMode: ViewMode } {
+  if (typeof window === 'undefined') return { currentPlaceId: null, viewMode: 'portfolio' }
+  try {
+    const raw = window.localStorage.getItem(LIFE_PM_UI_KEY)
+    if (!raw) return { currentPlaceId: null, viewMode: 'portfolio' }
+    const parsed = JSON.parse(raw) as { currentPlaceId?: string | null; viewMode?: ViewMode }
+    return {
+      currentPlaceId: parsed.currentPlaceId ?? null,
+      viewMode: parsed.viewMode ?? 'portfolio',
+    }
+  } catch {
+    return { currentPlaceId: null, viewMode: 'portfolio' }
+  }
+}
+
+function persist(currentPlaceId: string | null, viewMode: ViewMode) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(LIFE_PM_UI_KEY, JSON.stringify({ currentPlaceId, viewMode }))
+}
+
+const persisted = readPersisted()
 
 interface UIStore {
   selectedNodeId: string | null
   isPanelOpen: boolean
   isCommandPaletteOpen: boolean
   isQuickCaptureOpen: boolean
+  isInboxOpen: boolean
   filingNodeId: string | null
   activeLensId: string | null
   currentPlaceId: string | null
+  viewMode: ViewMode
   showDone: boolean
   titleFocusRequest: string | null
   selectNode: (id: string | null) => void
@@ -17,24 +46,29 @@ interface UIStore {
   closePanel: () => void
   toggleCommandPalette: (open?: boolean) => void
   setQuickCaptureOpen: (open: boolean) => void
+  setInboxOpen: (open: boolean) => void
   startFilingNode: (id: string) => void
   cancelFilingNode: () => void
   setActiveLensId: (id: string | null) => void
   enterPlace: (id: string) => void
+  setViewMode: (viewMode: ViewMode) => void
+  syncViewMode: () => void
   resetPlace: () => void
   setShowDone: (show: boolean) => void
   requestTitleFocus: (id: string) => void
   clearTitleFocusRequest: () => void
 }
 
-export const useUIStore = create<UIStore>((set) => ({
+export const useUIStore = create<UIStore>((set, get) => ({
   selectedNodeId: null,
   isPanelOpen: false,
   isCommandPaletteOpen: false,
   isQuickCaptureOpen: false,
+  isInboxOpen: false,
   filingNodeId: null,
   activeLensId: null,
-  currentPlaceId: null,
+  currentPlaceId: persisted.currentPlaceId,
+  viewMode: persisted.viewMode,
   showDone: false,
   titleFocusRequest: null,
   selectNode: (id) => set({ selectedNodeId: id }),
@@ -46,27 +80,54 @@ export const useUIStore = create<UIStore>((set) => ({
       filingNodeId: null,
     })),
   setQuickCaptureOpen: (open) => set({ isQuickCaptureOpen: open, filingNodeId: null }),
-  startFilingNode: (id) => set({ filingNodeId: id, isPanelOpen: false }),
+  setInboxOpen: (open) => set({ isInboxOpen: open }),
+  startFilingNode: (id) => set({ filingNodeId: id, isPanelOpen: false, isInboxOpen: false }),
   cancelFilingNode: () => set({ filingNodeId: null }),
   setActiveLensId: (activeLensId) => set({ activeLensId, filingNodeId: null }),
-  enterPlace: (id) =>
-    set((state) => ({
+  enterPlace: (id) => {
+    const nodes = useNodeStore.getState().nodes
+    const node = nodes.find((candidate) => candidate.id === id) ?? null
+    const state = get()
+    const same = state.currentPlaceId === id
+    const viewMode = same && isViewModeAllowed(state.viewMode, node, nodes) ? state.viewMode : resolveViewMode(node, nodes)
+    persist(id, viewMode)
+    set({
       currentPlaceId: id,
-      selectedNodeId: state.currentPlaceId === id ? state.selectedNodeId : null,
-      isPanelOpen: state.currentPlaceId === id ? state.isPanelOpen : false,
-      activeLensId: state.currentPlaceId === id ? state.activeLensId : null,
+      viewMode,
+      selectedNodeId: same ? state.selectedNodeId : null,
+      isPanelOpen: same ? state.isPanelOpen : false,
+      activeLensId: same ? state.activeLensId : null,
       filingNodeId: null,
-    })),
-  resetPlace: () =>
+    })
+  },
+  setViewMode: (viewMode) => {
+    persist(get().currentPlaceId, viewMode)
+    set({ viewMode })
+  },
+  syncViewMode: () => {
+    const { currentPlaceId, viewMode } = get()
+    if (!currentPlaceId) return
+    const nodes = useNodeStore.getState().nodes
+    const node = nodes.find((candidate) => candidate.id === currentPlaceId) ?? null
+    if (isViewModeAllowed(viewMode, node, nodes)) return
+    const next = resolveViewMode(node, nodes)
+    persist(currentPlaceId, next)
+    set({ viewMode: next })
+  },
+  resetPlace: () => {
+    persist(null, 'portfolio')
     set({
       currentPlaceId: null,
+      viewMode: 'portfolio',
       showDone: false,
       selectedNodeId: null,
       isPanelOpen: false,
       isQuickCaptureOpen: false,
+      isInboxOpen: false,
       filingNodeId: null,
       activeLensId: null,
-    }),
+    })
+  },
   setShowDone: (showDone) => set({ showDone }),
   requestTitleFocus: (id) => set({ titleFocusRequest: id, selectedNodeId: id, isPanelOpen: true, filingNodeId: null }),
   clearTitleFocusRequest: () => set({ titleFocusRequest: null }),

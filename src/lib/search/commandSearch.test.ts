@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { COMMAND_SEARCH_LIMIT, searchCommandNodes } from './commandSearch'
 import { defaultEditorContent } from '@/lib/utils'
+import { LIFE_PM_DEFAULTS } from '@/lib/life-pm/types'
 import type { NodeRecord } from '@/types'
 
 function node(partial: Partial<NodeRecord> & Pick<NodeRecord, 'id' | 'title'>): NodeRecord {
@@ -19,6 +20,7 @@ function node(partial: Partial<NodeRecord> & Pick<NodeRecord, 'id' | 'title'>): 
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
     last_visited_at: null,
+    ...LIFE_PM_DEFAULTS,
     ...partial,
   }
 }

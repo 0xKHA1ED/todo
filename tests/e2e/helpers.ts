@@ -88,6 +88,26 @@ export async function updateRootNode(patch: {
   await supabase.auth.signOut()
 }
 
+export async function requireLifePmMigration() {
+  const { supabase, userId } = await createAuthenticatedE2EClient()
+
+  const { error } = await supabase.from('nodes').select('kind').eq('user_id', userId).limit(1)
+  await supabase.auth.signOut()
+
+  if (error) {
+    test.skip(true, `Apply supabase/migrations/005_life_pm.sql before running this test. BLOCKED: ${JSON.stringify(error)}`)
+  }
+}
+
+const GRANDFATHERED_STAGE_STATUS = {
+  problem: 'complete',
+  shape: 'complete',
+  plan: 'complete',
+  spec: 'complete',
+  execute: 'in_progress',
+  review: 'not_started',
+}
+
 export async function seedNodeTree(
   nodes: Array<{
     title: string
@@ -97,6 +117,12 @@ export async function seedNodeTree(
     date?: string | null
     completed?: boolean
     last_visited_at?: string | null
+    kind?: 'domain' | 'project' | 'module' | 'task'
+    workflow_stage?: 'problem' | 'shape' | 'plan' | 'spec' | 'execute' | 'review' | null
+    pm_status?: 'idea' | 'active' | 'paused' | 'done' | 'archived'
+    outcome?: string
+    health?: 'on_track' | 'at_risk' | 'stalled' | 'blocked' | null
+    break_glass?: { used: boolean; reason: string; at: string } | null
   }>,
 ) {
   const { supabase, userId } = await createAuthenticatedE2EClient()
@@ -113,8 +139,20 @@ export async function seedNodeTree(
 
   for (let index = 0; index < nodes.length; index += 1) {
     const node = nodes[index]
-    const parentId = idsByTitle.get(node.parentTitle ?? 'Main')
+    const parentTitle = node.parentTitle ?? 'Main'
+    const parentId = idsByTitle.get(parentTitle)
     if (!parentId) throw new Error(`Missing parent node "${node.parentTitle}".`)
+
+    const underRoot = parentTitle === 'Main'
+    const kind = node.kind ?? (underRoot ? 'project' : 'task')
+    const workflowStage =
+      node.workflow_stage !== undefined
+        ? node.workflow_stage
+        : kind === 'project' || kind === 'module'
+          ? underRoot
+            ? 'execute'
+            : 'problem'
+          : null
 
     const { data, error } = await supabase
       .from('nodes')
@@ -126,9 +164,16 @@ export async function seedNodeTree(
         tags: node.tags ?? [],
         description: ROOT_DESCRIPTION,
         sort_order: index,
+        kind,
+        pm_status: node.pm_status ?? 'active',
+        outcome: node.outcome ?? '',
+        workflow_stage: workflowStage,
+        stage_status: workflowStage === 'execute' ? GRANDFATHERED_STAGE_STATUS : {},
         ...(node.date !== undefined ? { date: node.date } : {}),
         ...(node.completed !== undefined ? { completed: node.completed } : {}),
         ...(node.last_visited_at !== undefined ? { last_visited_at: node.last_visited_at } : {}),
+        ...(node.health !== undefined ? { health: node.health } : {}),
+        ...(node.break_glass !== undefined ? { break_glass: node.break_glass } : {}),
       })
       .select('id')
       .single()
@@ -141,6 +186,7 @@ export async function seedNodeTree(
 
 export async function signIn(page: Page) {
   requireE2ECredentials()
+  await requireLifePmMigration()
   await resetE2EState()
   await page.goto('/login/')
   await page.getByLabel('Email').fill(process.env.E2E_USER_EMAIL!)
@@ -148,7 +194,26 @@ export async function signIn(page: Page) {
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page).toHaveURL(/\/map\/?$/, { timeout: 30_000 })
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Home')
-  await expect(page.getByText('Add a project')).toBeVisible()
+  await expect(page.getByTestId('portfolio-dashboard')).toBeVisible()
+  await expect(page.getByText('Add a domain or project')).toBeVisible()
+}
+
+export async function openProjectCard(page: Page, title: string) {
+  const card = page.getByTestId('project-card').filter({ hasText: title }).first()
+  await expect(card).toBeVisible()
+  await card.click()
+}
+
+export async function openMapTab(page: Page) {
+  await page.getByRole('button', { name: 'Map' }).click()
+  await expect(page.locator('.react-flow')).toBeVisible()
+}
+
+export async function addProject(page: Page, title: string) {
+  await page.getByRole('button', { name: 'Add project' }).click()
+  await expect(page.getByLabel('Title')).toBeFocused()
+  await page.getByLabel('Title').fill(title)
+  await page.getByLabel('Title').blur()
 }
 
 export async function selectFirstNode(page: Page) {

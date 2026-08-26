@@ -47,11 +47,14 @@ async function readFlowPosition(locator: Locator) {
 test('dragging a card moves it and the position survives reload', async ({ page }) => {
   await signIn(page)
   await seedNodeTree([
-    { title: 'Source Area' },
-    { title: 'Source Child', parentTitle: 'Source Area' },
-    { title: 'Target Area' },
+    { title: 'Arena', kind: 'project', workflow_stage: 'execute' },
+    { title: 'Source Area', parentTitle: 'Arena', kind: 'task' },
+    { title: 'Source Child', parentTitle: 'Source Area', kind: 'task' },
+    { title: 'Target Area', parentTitle: 'Arena', kind: 'task' },
   ])
   await page.reload()
+  await page.getByTestId('project-card').filter({ hasText: 'Arena' }).click()
+  await page.getByRole('button', { name: 'Map' }).click()
   await fitCanvas(page)
 
   const source = page.locator('.react-flow__node', { hasText: 'Source Area' })
@@ -85,6 +88,9 @@ test('dragging a card moves it and the position survives reload', async ({ page 
     .toBeGreaterThan(80)
 
   await page.reload()
+  await page.getByRole('button', { name: 'Home' }).click()
+  await page.getByTestId('project-card').filter({ hasText: 'Arena' }).click()
+  await page.getByRole('button', { name: 'Map' }).click()
   await fitCanvas(page)
 
   const reloadedSource = page.locator('.react-flow__node', { hasText: 'Source Area' })

@@ -1,20 +1,17 @@
 import { expect, test } from '@playwright/test'
-import { fitCanvas, requireE2ECredentials, requireSystemRoleMigration, signIn } from './helpers'
+import { requireE2ECredentials, requireLifePmMigration, requireSystemRoleMigration, seedNodeTree, signIn } from './helpers'
 
 test.beforeEach(async () => {
   requireE2ECredentials()
   await requireSystemRoleMigration()
+  await requireLifePmMigration()
 })
 
-test('quick capture adds an inbox item and File moves it under a project', async ({ page }) => {
+test('quick capture adds an inbox item and File moves it under an execute project', async ({ page }) => {
   await signIn(page)
-  await expect(page.getByText('Add a project')).toBeVisible()
-
   const projectTitle = `Project ${Date.now()}`
-  await page.getByRole('button', { name: 'Add' }).click()
-  await page.getByLabel('Title').fill(projectTitle)
-  await page.getByLabel('Title').blur()
-  await page.keyboard.press('Escape')
+  await seedNodeTree([{ title: projectTitle, kind: 'project', workflow_stage: 'execute' }])
+  await page.reload()
 
   await page.keyboard.press('c')
   const dialog = page.getByRole('dialog', { name: 'Quick capture' })
@@ -23,20 +20,19 @@ test('quick capture adds an inbox item and File moves it under a project', async
   await dialog.getByRole('button', { name: 'Add to Inbox' }).click()
   await expect(dialog).toBeHidden()
 
-  const inboxSection = page.locator('section', { has: page.getByText('Inbox') }).first()
-  await expect(inboxSection.getByText('Bank form')).toBeVisible()
-  await expect(inboxSection.getByText('errands')).toBeVisible()
+  await page.getByTestId('inbox-badge').click()
+  const inboxSheet = page.getByRole('dialog').last()
+  await expect(inboxSheet.getByText('Bank form')).toBeVisible()
+  await expect(inboxSheet.getByText('errands')).toBeVisible()
 
-  await inboxSection.getByRole('button', { name: 'File' }).click()
-  await expect(page.getByText(/Click a visible subtree to move .*Bank form.* Press Esc to cancel\./)).toBeVisible()
-  const projectNode = page.locator('.react-flow__node', { hasText: projectTitle }).first()
-  await expect(projectNode).toBeVisible()
-  await projectNode.click()
+  await inboxSheet.getByRole('button', { name: 'File as task' }).click()
+  await expect(page.getByText(/Filing/)).toBeVisible()
+  await page.getByTestId('project-card').filter({ hasText: projectTitle }).click()
 
-  await expect(inboxSection.getByText('Bank form')).toHaveCount(0)
+  await page.getByTestId('inbox-badge').click()
+  await expect(page.getByRole('dialog').last().getByText('Bank form')).toHaveCount(0)
+  await page.keyboard.press('Escape')
 
-  await fitCanvas(page)
-  await expect(projectNode).toBeVisible()
-  await projectNode.dblclick()
-  await expect(page.locator('.react-flow__node', { hasText: 'Bank form' })).toBeVisible()
+  await page.getByTestId('project-card').filter({ hasText: projectTitle }).click()
+  await expect(page.getByText('Bank form')).toBeVisible()
 })

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useToast } from '@/components/ui/use-toast'
+import { canCreateTask, defaultKindForParent } from '@/lib/life-pm/workflowModel'
 import { useNodeStore } from '@/lib/store/useNodeStore'
 import { useUIStore } from '@/lib/store/useUIStore'
 
@@ -94,7 +95,12 @@ export function useKeyboardNav() {
         if (event.key === 'Tab') {
           event.preventDefault()
           if (!selected || selected.parent_id === null) return
-          const child = await createNode({ parent_id: selected.id, title: 'New Task' })
+          const kind = defaultKindForParent(selected, nodes)
+          if (kind === 'task' && !canCreateTask(selected, nodes)) {
+            toast({ title: 'Tasks unlock in Execute', description: 'Finish the earlier stages first, or use emergency skip.' })
+            return
+          }
+          const child = await createNode({ parent_id: selected.id, kind })
           enterPlace(selected.id)
           requestTitleFocus(child.id)
           return

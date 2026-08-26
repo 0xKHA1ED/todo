@@ -1,5 +1,5 @@
 import { expect, test, type Response } from '@playwright/test'
-import { fitCanvas, requireE2ECredentials, seedNodeTree, signIn } from './helpers'
+import { fitCanvas, openMapTab, requireE2ECredentials, seedNodeTree, signIn } from './helpers'
 
 test.beforeEach(requireE2ECredentials)
 
@@ -25,20 +25,22 @@ function isVisitNodesWrite(response: Response) {
   return (response.request().postData() ?? '').includes('last_visited_at')
 }
 
-test('Now ranks overdue first with overflow', async ({ page }) => {
+test('Now ranks overdue first with overflow inside Execute', async ({ page }) => {
   const today = localISODate(0)
   const yesterday = localISODate(-1)
 
   await signIn(page)
   await seedNodeTree([
-    { title: 'Pay bill', date: yesterday, urgency: 'high' },
-    { title: 'Today task 1', date: today },
-    { title: 'Today task 2', date: today },
-    { title: 'Today task 3', date: today },
-    { title: 'Today task 4', date: today },
-    { title: 'Today task 5', date: today },
+    { title: 'Bills', kind: 'project', workflow_stage: 'execute' },
+    { title: 'Pay bill', parentTitle: 'Bills', date: yesterday, urgency: 'high' },
+    { title: 'Today task 1', parentTitle: 'Bills', date: today },
+    { title: 'Today task 2', parentTitle: 'Bills', date: today },
+    { title: 'Today task 3', parentTitle: 'Bills', date: today },
+    { title: 'Today task 4', parentTitle: 'Bills', date: today },
+    { title: 'Today task 5', parentTitle: 'Bills', date: today },
   ])
   await page.reload()
+  await page.getByTestId('project-card').filter({ hasText: 'Bills' }).click()
 
   const nowList = page.locator('section', { has: page.getByRole('heading', { name: 'Now' }) })
   await expect(nowList.getByRole('button').first()).toContainText('Pay bill')
@@ -58,10 +60,7 @@ test('Forgotten opens a stale leaf and visit persists across reload', async ({ p
     ])
   } catch (error) {
     if (!isMissingLastVisitedColumn(error)) throw error
-    test.skip(
-      true,
-      `BLOCKED: ${JSON.stringify(error)}`,
-    )
+    test.skip(true, `BLOCKED: ${JSON.stringify(error)}`)
   }
 
   await page.reload()
@@ -76,6 +75,7 @@ test('Forgotten opens a stale leaf and visit persists across reload', async ({ p
   await logoVisit
 
   const homeEntered = page.waitForResponse(isVisitNodesWrite)
+  await page.getByRole('button', { name: 'Home' }).click()
   await page.reload()
   await homeEntered
   await expect(page.getByRole('button', { name: 'Forgotten Standup' })).toBeVisible()
@@ -95,10 +95,13 @@ test('Forgotten stays visible when all direct children were seen recently', asyn
 test('loud dated leaves show due labels and undated compact leaves do not', async ({ page }) => {
   await signIn(page)
   await seedNodeTree([
-    { title: 'Fix faucet', date: localISODate(0) },
-    { title: 'Paint' },
+    { title: 'Arena', kind: 'project', workflow_stage: 'execute' },
+    { title: 'Fix faucet', parentTitle: 'Arena', date: localISODate(0) },
+    { title: 'Paint', parentTitle: 'Arena' },
   ])
   await page.reload()
+  await page.getByTestId('project-card').filter({ hasText: 'Arena' }).click()
+  await openMapTab(page)
   await fitCanvas(page)
 
   const faucet = page.locator('.react-flow__node', { hasText: 'Fix faucet' })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { LIFE_PM_DEFAULTS } from '@/lib/life-pm/types'
 import type { NodeRecord } from '@/types'
-import { groupByDomain, listProjects, pickAttentionModule, portfolioStatusSections } from './portfolioModel'
+import { groupByDomain, listProjects, pickAttentionModule, portfolioStatusSections, projectStageIndicator } from './portfolioModel'
 
 function node(partial: Partial<NodeRecord> & Pick<NodeRecord, 'id' | 'title'>): NodeRecord {
   return {
@@ -160,5 +160,20 @@ describe('pickAttentionModule', () => {
       workflow_stage: 'problem',
     })
     expect(pickAttentionModule([home, project, auth, token], 'proj', now)?.title).toBe('Token refresh')
+  })
+})
+
+describe('projectStageIndicator', () => {
+  it('uses the leaf project workflow stage when the project has no modules', () => {
+    const project = node({ id: 'proj', title: 'Flooring', kind: 'project', workflow_stage: 'shape', stage_status: { shape: 'in_progress' } })
+    expect(projectStageIndicator([home, project], 'proj')).toEqual({ stage: 'shape', light: 'in_progress' })
+  })
+
+  it('summarizes container projects by the earliest active descendant leaf stage', () => {
+    const project = node({ id: 'proj', title: 'Platform', kind: 'project' })
+    const auth = node({ id: 'auth', title: 'Auth', parent_id: 'proj', kind: 'module' })
+    const token = node({ id: 'token', title: 'Token refresh', parent_id: 'auth', kind: 'module', workflow_stage: 'spec', stage_status: { spec: 'in_progress' } })
+    const billing = node({ id: 'billing', title: 'Billing', parent_id: 'proj', kind: 'module', workflow_stage: 'plan', stage_status: { plan: 'in_progress' } })
+    expect(projectStageIndicator([home, project, auth, token, billing], 'proj')).toEqual({ stage: 'plan', light: 'in_progress' })
   })
 })

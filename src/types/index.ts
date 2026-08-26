@@ -9,6 +9,7 @@ import type {
   StageDocsMap,
   StageStatusMap,
   StageSummariesMap,
+  TrafficLight,
   WorkflowStage,
 } from '@/lib/life-pm/types'
 
@@ -22,6 +23,7 @@ export type {
   StageDocsMap,
   StageStatusMap,
   StageSummariesMap,
+  TrafficLight,
   ViewMode,
   WorkflowStage,
 } from '@/lib/life-pm/types'

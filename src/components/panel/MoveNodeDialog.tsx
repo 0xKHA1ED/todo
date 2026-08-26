@@ -74,9 +74,9 @@ export function MoveNodeDialog({ nodeId, open, onOpenChange }: MoveNodeDialogPro
       onOpenChange(false)
     } catch (error) {
       toast({
-        title: 'Move failed',
-        description: error instanceof Error ? error.message : 'Could not move this node.',
-        variant: 'destructive',
+        title: error instanceof Error && error.message.includes('Tasks unlock') ? 'Tasks unlock in Execute' : 'Move failed',
+        description: error instanceof Error ? error.message : 'Choose a valid destination for this item.',
+        variant: error instanceof Error && error.message.includes('Tasks unlock') ? 'default' : 'destructive',
       })
     } finally {
       setPendingParentId(null)

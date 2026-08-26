@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ForgottenCard } from '@/components/place/ForgottenCard'
 import { LensPicker } from '@/components/place/LensPicker'
 import { pickForgotten } from '@/lib/place/placeModel'
-import { isWorkflowLeaf } from '@/lib/life-pm/workflowModel'
-import { groupByDomain, pickAttentionModule, portfolioStatusSections } from '@/lib/portfolio/portfolioModel'
+import { groupByDomain, pickAttentionModule, portfolioStatusSections, projectStageIndicator } from '@/lib/portfolio/portfolioModel'
 import { useNodeStore } from '@/lib/store/useNodeStore'
 import { useUIStore } from '@/lib/store/useUIStore'
 import { useToast } from '@/components/ui/use-toast'
@@ -67,9 +66,11 @@ export function PortfolioDashboard({ onCreateDomain, onCreateProject }: Portfoli
         cancelFilingNode()
       } catch (error) {
         toast({
-          title: 'Could not file item',
-          description: error instanceof Error ? error.message : 'Choose an Execute-stage leaf.',
-          variant: 'destructive',
+          title: 'Tasks unlock in Execute',
+          description:
+            error instanceof Error
+              ? error.message
+              : 'Choose a leaf project or module in Execute, or use emergency skip from its workflow screen.',
         })
       }
       return
@@ -143,6 +144,7 @@ export function PortfolioDashboard({ onCreateDomain, onCreateProject }: Portfoli
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {group.projects.map((project) => {
                       const attention = pickAttentionModule(nodes, project.id, now)
+                      const stageIndicator = projectStageIndicator(nodes, project.id)
                       return (
                         <ProjectCard
                           key={project.id}
@@ -150,7 +152,8 @@ export function PortfolioDashboard({ onCreateDomain, onCreateProject }: Portfoli
                           status={project.pm_status}
                           health={project.health}
                           outcome={project.outcome}
-                          stageLabel={isWorkflowLeaf(project, nodes) ? project.workflow_stage : null}
+                          stageLabel={stageIndicator?.stage ?? null}
+                          stageLight={stageIndicator?.light ?? null}
                           attentionTitle={attention?.title ?? null}
                           breakGlass={Boolean(
                             project.break_glass?.used ||

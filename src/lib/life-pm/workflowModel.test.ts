@@ -141,6 +141,53 @@ describe('canSignOff', () => {
     expect(canSignOff(moduleNode, [home, moduleNode])).toBe(true)
   })
 
+  it('blocks sign-off when required stage sections are missing', () => {
+    const moduleNode = node({
+      id: 'mod',
+      title: 'Token refresh',
+      kind: 'module',
+      workflow_stage: 'problem',
+      stage_docs: { problem: '<h2>Problem statement</h2><p>Sessions drop.</p>' },
+    })
+    expect(canSignOff(moduleNode, [home, moduleNode])).toBe(false)
+  })
+
+  it('allows sign-off when required non-sign-off checklist items are complete', () => {
+    const moduleNode = node({
+      id: 'mod',
+      title: 'Token refresh',
+      kind: 'module',
+      workflow_stage: 'problem',
+      stage_docs: {
+        problem:
+          '<h2>Problem statement</h2><p>Sessions drop.</p>' +
+          '<h2>Who</h2><p>Mobile users.</p>' +
+          '<h2>Pain</h2><p>Checkout fails.</p>' +
+          '<h2>Why now</h2><p>Ticket spike.</p>' +
+          '<h2>Constraints</h2><ul><li>Two weeks.</li></ul>' +
+          '<h2>Not solving</h2><ul><li>Native apps.</li><li>OAuth migration.</li></ul>',
+      },
+    })
+    expect(canSignOff(moduleNode, [home, moduleNode])).toBe(true)
+  })
+
+  it('enforces minimum checklist counts before sign-off', () => {
+    const moduleNode = node({
+      id: 'mod',
+      title: 'Token refresh',
+      kind: 'module',
+      workflow_stage: 'spec',
+      stage_docs: {
+        spec:
+          '<h2>Requirements</h2><p>Refresh tokens.</p>' +
+          '<h2>Acceptance criteria</h2><ol><li>Works after expiry.</li><li>Shows login modal.</li></ol>' +
+          '<h2>Edge cases</h2><ul><li>Two tabs.</li><li>Offline.</li></ul>' +
+          '<h2>Verification plan</h2><p>Unit and e2e checks.</p>',
+      },
+    })
+    expect(canSignOff(moduleNode, [home, moduleNode])).toBe(false)
+  })
+
   it('blocks execute sign-off while work items remain open', () => {
     const moduleNode = node({
       id: 'mod',

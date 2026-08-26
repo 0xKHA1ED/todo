@@ -1,6 +1,6 @@
 import { STALE_MS, subtreeDescendants } from '@/lib/place/placeModel'
-import { hasChildModules, isWorkflowLeaf, stageIndex } from '@/lib/life-pm/workflowModel'
-import type { NodeRecord, PmStatus } from '@/types'
+import { hasChildModules, isWorkflowLeaf, stageIndex, trafficLight } from '@/lib/life-pm/workflowModel'
+import type { NodeRecord, PmStatus, TrafficLight, WorkflowStage } from '@/types'
 
 export function listProjects(nodes: NodeRecord[]): NodeRecord[] {
   return nodes.filter((node) => node.kind === 'project' && node.system_role == null)
@@ -11,6 +11,13 @@ function leafModulesOf(nodes: NodeRecord[], projectId: string): NodeRecord[] {
     (node): node is NodeRecord =>
       Boolean(node && node.kind === 'module' && isWorkflowLeaf(node, nodes) && !hasChildModules(nodes, node.id)),
   )
+}
+
+function workflowLeavesOfProject(nodes: NodeRecord[], projectId: string): NodeRecord[] {
+  const project = nodes.find((node) => node.id === projectId) ?? null
+  if (!project) return []
+  if (isWorkflowLeaf(project, nodes)) return [project]
+  return leafModulesOf(nodes, projectId)
 }
 
 function byTitle(a: NodeRecord, b: NodeRecord): number {
@@ -48,6 +55,31 @@ export function pickAttentionModule(nodes: NodeRecord[], projectId: string, now:
     return [...group].sort(byTitle)[0] ?? null
   }
   return null
+}
+
+export type ProjectStageIndicator = {
+  stage: WorkflowStage
+  light: TrafficLight
+}
+
+export function projectStageIndicator(nodes: NodeRecord[], projectId: string): ProjectStageIndicator | null {
+  const leaves = workflowLeavesOfProject(nodes, projectId).filter((node) => node.workflow_stage)
+  if (leaves.length === 0) return null
+
+  const indicators = leaves.map((node) => {
+    const stage = node.workflow_stage as WorkflowStage
+    return {
+      node,
+      stage,
+      light: trafficLight(stage, node.workflow_stage, node.stage_status),
+    }
+  })
+  const active = indicators
+    .filter((indicator) => indicator.light !== 'complete')
+    .sort((a, b) => stageIndex(a.stage) - stageIndex(b.stage) || byTitle(a.node, b.node))
+  const complete = indicators.sort((a, b) => stageIndex(b.stage) - stageIndex(a.stage) || byTitle(a.node, b.node))
+  const picked = active[0] ?? complete[0]
+  return picked ? { stage: picked.stage, light: picked.light } : null
 }
 
 export type DomainGroup = {

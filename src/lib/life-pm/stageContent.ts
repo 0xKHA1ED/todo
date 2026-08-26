@@ -1,32 +1,37 @@
 import { STAGE_CHECKLISTS, STAGE_ORDER, STAGE_SECTIONS, type WorkflowStage } from './types'
 import type { NodeRecord } from '@/types'
 
-const LABEL_TO_HEADING: Record<string, string> = {
-  'Problem statement': 'Problem statement',
-  Who: 'Who',
-  Pain: 'Pain',
-  'Why now': 'Why now',
-  Constraints: 'Constraints',
-  'Not solving (min 2)': 'Not solving',
-  'Options (min 3)': 'Options',
-  Tradeoffs: 'Tradeoffs',
-  Killed: 'Killed',
-  'Chosen direction': 'Chosen direction',
-  Approach: 'Approach',
-  Phases: 'Phases',
-  Dependencies: 'Dependencies',
-  Risks: 'Risks',
-  'Non-goals': 'Non-goals',
-  Requirements: 'Requirements',
-  'Acceptance criteria (min 3)': 'Acceptance criteria',
-  'Edge cases (min 2)': 'Edge cases',
-  'Verification plan': 'Verification plan',
-  'Tasks documented': 'Tasks',
-  'Each task has definition of done': 'Tasks',
-  'Tasks linked to spec criteria (where applicable)': 'Tasks',
-  'Problem revisited': 'Problem revisited',
-  Surprises: 'Surprises',
-  Learnings: 'Learnings',
+type ChecklistRequirement = {
+  heading: string
+  minItems?: number
+}
+
+const LABEL_REQUIREMENTS: Record<string, ChecklistRequirement> = {
+  'Problem statement': { heading: 'Problem statement' },
+  Who: { heading: 'Who' },
+  Pain: { heading: 'Pain' },
+  'Why now': { heading: 'Why now' },
+  Constraints: { heading: 'Constraints', minItems: 1 },
+  'Not solving (min 2)': { heading: 'Not solving', minItems: 2 },
+  'Options (min 3)': { heading: 'Options', minItems: 3 },
+  Tradeoffs: { heading: 'Tradeoffs' },
+  Killed: { heading: 'Killed', minItems: 1 },
+  'Chosen direction': { heading: 'Chosen direction' },
+  Approach: { heading: 'Approach' },
+  Phases: { heading: 'Phases', minItems: 1 },
+  Dependencies: { heading: 'Dependencies' },
+  Risks: { heading: 'Risks', minItems: 1 },
+  'Non-goals': { heading: 'Non-goals' },
+  Requirements: { heading: 'Requirements' },
+  'Acceptance criteria (min 3)': { heading: 'Acceptance criteria', minItems: 3 },
+  'Edge cases (min 2)': { heading: 'Edge cases', minItems: 2 },
+  'Verification plan': { heading: 'Verification plan' },
+  'Tasks documented': { heading: 'Tasks' },
+  'Each task has definition of done': { heading: 'Tasks' },
+  'Tasks linked to spec criteria (where applicable)': { heading: 'Tasks' },
+  'Problem revisited': { heading: 'Problem revisited' },
+  Surprises: { heading: 'Surprises' },
+  Learnings: { heading: 'Learnings' },
 }
 
 function htmlText(html: string): string {
@@ -38,11 +43,32 @@ export function stageHasContent(node: NodeRecord, stage: WorkflowStage): boolean
   return htmlText(node.stage_docs[stage] ?? '').length > 0
 }
 
-export function headingHasContent(html: string, heading: string): boolean {
+function headingSection(html: string, heading: string): string {
   const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const match = html.match(new RegExp(`<h2[^>]*>\\s*${escaped}\\s*</h2>([\\s\\S]*?)(?=<h2|$)`, 'i'))
-  if (!match) return false
-  return htmlText(match[1] ?? '').length > 0
+  return match?.[1] ?? ''
+}
+
+function countStructuredItems(html: string): number {
+  const listItems = html.match(/<li[\s>]/gi)?.length ?? 0
+  if (listItems > 0) return listItems
+  return html.match(/<p[\s>][\s\S]*?<\/p>/gi)?.filter((paragraph) => htmlText(paragraph).length > 0).length ?? 0
+}
+
+export function headingHasContent(html: string, heading: string): boolean {
+  return htmlText(headingSection(html, heading)).length > 0
+}
+
+export function checklistHeadingForLabel(label: string): string {
+  return LABEL_REQUIREMENTS[label]?.heading ?? label
+}
+
+function checklistRequirementMet(html: string, label: string): boolean {
+  const requirement = LABEL_REQUIREMENTS[label] ?? { heading: label }
+  const section = headingSection(html, requirement.heading)
+  if (htmlText(section).length === 0) return false
+  if (!requirement.minItems) return true
+  return countStructuredItems(section) >= requirement.minItems
 }
 
 export function checklistState(node: NodeRecord, stage: WorkflowStage): { label: string; checked: boolean }[] {
@@ -53,9 +79,13 @@ export function checklistState(node: NodeRecord, stage: WorkflowStage): { label:
       return { label, checked: true }
     }
     if (label === 'Sign-off') return { label, checked: false }
-    const heading = LABEL_TO_HEADING[label] ?? label
-    return { label, checked: headingHasContent(html, heading) }
+    return { label, checked: checklistRequirementMet(html, label) }
   })
+}
+
+export function stageChecklistReady(node: NodeRecord, stage: WorkflowStage): boolean {
+  if (node.stage_status[stage] === 'complete') return true
+  return checklistState(node, stage).every((item) => item.label === 'Sign-off' || item.checked)
 }
 
 export function ancestorContext(node: NodeRecord, nodes: NodeRecord[]): { domain: string; project: string } {

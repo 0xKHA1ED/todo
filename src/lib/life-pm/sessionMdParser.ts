@@ -27,6 +27,25 @@ export type ParseResult = ParseSuccess | ParseFailure
 const STAGES: WorkflowStage[] = ['problem', 'shape', 'plan', 'spec', 'execute', 'review']
 const STATUSES: LifePmStatus[] = ['not_started', 'in_progress', 'complete']
 
+const SECTION_MIN_ITEMS: Partial<Record<WorkflowStage, Partial<Record<string, number>>>> = {
+  problem: {
+    Constraints: 1,
+    'Not solving': 2,
+  },
+  shape: {
+    Options: 3,
+    Killed: 1,
+  },
+  plan: {
+    Phases: 1,
+    Risks: 1,
+  },
+  spec: {
+    'Acceptance criteria': 3,
+    'Edge cases': 2,
+  },
+}
+
 function parseYamlValue(raw: string): string | boolean {
   const trimmed = raw.trim()
   if (trimmed === 'true') return true
@@ -86,6 +105,17 @@ function parseChecklist(body: string | undefined): { label: string; checked: boo
     items.push({ label: match[2]!.trim(), checked: match[1]!.toLowerCase() === 'x' })
   }
   return items
+}
+
+function markdownText(body: string | undefined): string {
+  if (!body) return ''
+  return body.replace(/[#>*_`\-[\]]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function countMarkdownItems(body: string | undefined): number {
+  if (!body) return 0
+  const count = body.split('\n').filter((line) => /^\s*(?:[-*]|\d+\.)\s+/.test(line)).length
+  return count > 0 ? count : markdownText(body) ? 1 : 0
 }
 
 function asString(value: string | boolean | undefined): string {
@@ -153,6 +183,21 @@ export function parseSessionExport(raw: string): ParseResult {
   if (status === 'complete' && !allRequiredChecked) {
     warnings.push('status is complete but checklist is incomplete; downgrading to in_progress')
     status = 'in_progress'
+  }
+
+  if (status === 'complete') {
+    const incompleteSections = (STAGE_SECTIONS[stage] ?? []).filter((title) => {
+      const sectionBody = sections[title]
+      if (!markdownText(sectionBody) || /^\(none/i.test(sectionBody?.trim() ?? '') || sectionBody?.trim() === '-') return true
+      const minItems = SECTION_MIN_ITEMS[stage]?.[title]
+      return minItems !== undefined && countMarkdownItems(sectionBody) < minItems
+    })
+    if (incompleteSections.length > 0) {
+      warnings.push(
+        `status is complete but required content is incomplete: ${incompleteSections.join(', ')}; downgrading to in_progress`,
+      )
+      status = 'in_progress'
+    }
   }
 
   if (errors.length > 0) {

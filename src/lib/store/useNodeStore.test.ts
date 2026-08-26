@@ -158,6 +158,34 @@ describe('useNodeStore.workflow helpers', () => {
     expect(updated?.break_glass?.reason).toBe('Production outage')
   })
 
+  it('allows emergency skip only once on workflow leaves before Execute', async () => {
+    setNodes([
+      record({ id: 'home', title: 'Main', parent_id: null }),
+      record({ id: 'domain', title: 'IMS', kind: 'domain' }),
+      record({
+        id: 'mod',
+        title: 'Token',
+        kind: 'module',
+        workflow_stage: 'problem',
+        break_glass: { used: true, reason: 'old', at: '2026-01-01T00:00:00.000Z' },
+      }),
+      record({ id: 'done', title: 'Done', kind: 'module', workflow_stage: 'execute' }),
+    ])
+
+    await expect(useNodeStore.getState().breakGlassToExecute('domain', 'Need it')).rejects.toThrow(/leaf projects and modules/)
+    await expect(useNodeStore.getState().breakGlassToExecute('mod', 'Need it')).rejects.toThrow(/already been used/)
+    await expect(useNodeStore.getState().breakGlassToExecute('done', 'Need it')).rejects.toThrow(/already in Execute/)
+  })
+
+  it('only lets modules skip review from Execute after work items are complete', async () => {
+    setNodes([
+      record({ id: 'home', title: 'Main', parent_id: null }),
+      record({ id: 'mod', title: 'Token', kind: 'module', workflow_stage: 'plan' }),
+    ])
+
+    await expect(useNodeStore.getState().skipReview('mod')).rejects.toThrow(/after Execute/)
+  })
+
   it('advances sign-off to the next stage', async () => {
     setNodes([
       record({
@@ -165,7 +193,13 @@ describe('useNodeStore.workflow helpers', () => {
         title: 'Token',
         kind: 'module',
         workflow_stage: 'shape',
-        stage_docs: { shape: '<h2>Chosen direction</h2><p>Cookies</p>' },
+        stage_docs: {
+          shape:
+            '<h2>Options</h2><ol><li>Cookies.</li><li>Headers.</li><li>Hybrid.</li></ol>' +
+            '<h2>Tradeoffs</h2><p>Cookies are simple, headers need client work.</p>' +
+            '<h2>Killed</h2><ul><li>Headers: too much migration risk.</li></ul>' +
+            '<h2>Chosen direction</h2><p>Cookies.</p>',
+        },
         stage_status: { shape: 'in_progress' },
       }),
     ])

@@ -30,6 +30,12 @@ const DOT: Record<string, string> = {
   locked: 'bg-slate-300',
 }
 
+function unlockTitle(stage: WorkflowStage): string {
+  const index = STAGE_ORDER.indexOf(stage)
+  const previous = index > 0 ? STAGE_ORDER[index - 1] : null
+  return previous ? `Unlocks after ${FULL[previous]}` : FULL[stage]
+}
+
 interface StageStripProps {
   node: NodeRecord
   activeStage: WorkflowStage
@@ -50,7 +56,7 @@ export function StageStrip({ node, activeStage, onSelect }: StageStripProps) {
             role="tab"
             aria-selected={current}
             disabled={locked}
-            title={locked ? 'Unlocks after Spec' : FULL[stage]}
+            title={locked ? unlockTitle(stage) : FULL[stage]}
             onClick={() => onSelect(stage)}
             className={cn(
               'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',

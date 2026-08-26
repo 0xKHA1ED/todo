@@ -1,6 +1,6 @@
 'use client'
 
-import { checklistState } from '@/lib/life-pm/stageContent'
+import { checklistHeadingForLabel, checklistState } from '@/lib/life-pm/stageContent'
 import type { NodeRecord, WorkflowStage } from '@/types'
 
 interface StageChecklistProps {
@@ -13,6 +13,13 @@ export function StageChecklist({ node, stage }: StageChecklistProps) {
   const locked = node.decisions.length
   const open = node.open_questions.length
 
+  function scrollToHeading(label: string) {
+    const heading = checklistHeadingForLabel(label)
+    const headings = Array.from(document.querySelectorAll<HTMLElement>('[data-testid="stage-document"] h2'))
+    const target = headings.find((element) => element.textContent?.trim().toLowerCase() === heading.toLowerCase())
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <div className="flex h-full flex-col gap-4" data-testid="stage-checklist">
       <div>
@@ -21,7 +28,13 @@ export function StageChecklist({ node, stage }: StageChecklistProps) {
           {items.map((item) => (
             <li key={item.label} className="flex items-start gap-2 text-sm text-slate-700">
               <span aria-hidden>{item.checked ? '☑' : '☐'}</span>
-              <span className={item.checked ? 'text-slate-500 line-through' : ''}>{item.label}</span>
+              <button
+                type="button"
+                className={item.checked ? 'text-left text-slate-500 underline-offset-2 line-through hover:underline' : 'text-left underline-offset-2 hover:underline'}
+                onClick={() => scrollToHeading(item.label)}
+              >
+                {item.label}
+              </button>
             </li>
           ))}
         </ul>

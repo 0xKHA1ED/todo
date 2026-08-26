@@ -1,5 +1,5 @@
 import type { NodeRecord } from '@/types'
-import { stageHasContent } from './stageContent'
+import { stageChecklistReady } from './stageContent'
 import type { NodeKind, StageStatusMap, TrafficLight, WorkflowStage } from './types'
 import { STAGE_ORDER } from './types'
 
@@ -61,7 +61,7 @@ export function canSignOff(node: NodeRecord, nodes: NodeRecord[]): boolean {
   const stage = node.workflow_stage
   if (!stage) return false
   if (stage === 'execute') return childTasks(node.id, nodes).every((task) => task.completed)
-  return stageHasContent(node, stage)
+  return stageChecklistReady(node, stage)
 }
 
 export function isStageLocked(stage: WorkflowStage, current: WorkflowStage | null): boolean {

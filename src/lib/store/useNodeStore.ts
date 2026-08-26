@@ -258,6 +258,7 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
     const node = nodes.find((candidate) => candidate.id === nodeId)
     if (!node) throw new Error('Node not found.')
     if (node.kind !== 'module') throw new Error('Only modules can skip review.')
+    if (node.workflow_stage !== 'execute') throw new Error('Review can only be skipped after Execute.')
     if (node.workflow_stage === 'execute' && !canSignOff(node, nodes)) {
       throw new Error('Complete all work items before skipping review.')
     }
@@ -271,8 +272,14 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
   async breakGlassToExecute(nodeId, reason) {
     const trimmed = reason.trim()
     if (!trimmed) throw new Error('A reason is required to skip ahead.')
-    const node = get().nodes.find((candidate) => candidate.id === nodeId)
+    const nodes = get().nodes
+    const node = nodes.find((candidate) => candidate.id === nodeId)
     if (!node) throw new Error('Node not found.')
+    if (!isWorkflowLeaf(node, nodes)) throw new Error('Emergency skip is only available on leaf projects and modules.')
+    if (node.workflow_stage === 'execute' || node.workflow_stage === 'review') {
+      throw new Error('This work is already in Execute or Review.')
+    }
+    if (node.break_glass?.used) throw new Error('Emergency skip has already been used for this work.')
     await get().updateNode(nodeId, {
       workflow_stage: 'execute',
       break_glass: { used: true, reason: trimmed, at: new Date().toISOString() },

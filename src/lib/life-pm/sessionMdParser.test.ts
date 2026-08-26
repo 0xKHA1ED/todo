@@ -101,4 +101,16 @@ Only a summary.
     expect(result.value.status).toBe('in_progress')
     expect(result.warnings.some((warning) => /checklist/i.test(warning))).toBe(true)
   })
+
+  it('downgrades complete status when required section content is incomplete', () => {
+    const md = golden('session-export-problem-complete.md').replace(
+      '## Not solving\n\n- OAuth provider migration (Google/Apple sign-in)\n- Admin panel session management\n- Native iOS/Android app auth (separate codebase)',
+      '## Not solving\n\n- OAuth provider migration (Google/Apple sign-in)',
+    )
+    const result = parseSessionExport(md)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.status).toBe('in_progress')
+    expect(result.warnings.some((warning) => /required content/i.test(warning))).toBe(true)
+  })
 })

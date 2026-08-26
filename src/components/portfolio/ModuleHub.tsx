@@ -40,9 +40,11 @@ export function ModuleHub({ place, onAddChild }: ModuleHubProps) {
         cancelFilingNode()
       } catch (error) {
         toast({
-          title: 'Could not file item',
-          description: error instanceof Error ? error.message : 'Choose an Execute-stage leaf.',
-          variant: 'destructive',
+          title: 'Tasks unlock in Execute',
+          description:
+            error instanceof Error
+              ? error.message
+              : 'Choose a leaf project or module in Execute, or use emergency skip from its workflow screen.',
         })
       }
       return

@@ -43,6 +43,7 @@ export function QuickCaptureDialog({ open, onOpenChange }: QuickCaptureDialogPro
     }
 
     const parsed = parseQuickCaptureTitle(title)
+    if (!parsed.title.trim()) return
 
     try {
       setSubmitting(true)
@@ -58,6 +59,9 @@ export function QuickCaptureDialog({ open, onOpenChange }: QuickCaptureDialogPro
       setSubmitting(false)
     }
   }
+
+  const inboxId = getInboxId(nodes)
+  const canSubmit = Boolean(inboxId) && title.trim().length > 0 && !submitting
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -85,7 +89,7 @@ export function QuickCaptureDialog({ open, onOpenChange }: QuickCaptureDialogPro
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={submitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={!canSubmit}>
               Add to Inbox
             </Button>
           </DialogFooter>

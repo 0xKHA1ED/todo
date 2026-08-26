@@ -208,8 +208,23 @@ export async function goHome(page: Page) {
 }
 
 export async function openQuickCapture(page: Page) {
+  await expect(page.getByTestId('inbox-badge')).toBeVisible()
   await page.getByRole('button', { name: 'C', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Quick capture' })).toBeVisible()
+}
+
+export async function captureToInbox(page: Page, title: string) {
+  await openQuickCapture(page)
+  const dialog = page.getByRole('dialog', { name: 'Quick capture' })
+  await dialog.getByLabel('Title').fill(title)
+  const created = page.waitForResponse((response) => {
+    if (response.request().method() !== 'POST') return false
+    if (!response.url().includes('/rest/v1/nodes')) return false
+    return response.ok()
+  })
+  await dialog.getByRole('button', { name: 'Add to Inbox' }).click()
+  await created
+  await expect(dialog).toBeHidden()
 }
 
 export function panelEditor(page: Page) {

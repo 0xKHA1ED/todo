@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { openQuickCapture, requireE2ECredentials, requireLifePmMigration, requireSystemRoleMigration, seedNodeTree, signIn } from './helpers'
+import { captureToInbox, requireE2ECredentials, requireLifePmMigration, requireSystemRoleMigration, seedNodeTree, signIn } from './helpers'
 
 test.beforeEach(async () => {
   requireE2ECredentials()
@@ -12,12 +12,10 @@ test('quick capture adds an inbox item and File moves it under an execute projec
   const projectTitle = `Project ${Date.now()}`
   await seedNodeTree([{ title: projectTitle, kind: 'project', workflow_stage: 'execute' }])
   await page.reload()
+  await expect(page.getByTestId('inbox-badge')).toBeVisible()
+  await expect(page.getByTestId('project-card').filter({ hasText: projectTitle })).toBeVisible()
 
-  await openQuickCapture(page)
-  const dialog = page.getByRole('dialog', { name: 'Quick capture' })
-  await dialog.getByLabel('Title').fill('Bank form #errands')
-  await dialog.getByRole('button', { name: 'Add to Inbox' }).click()
-  await expect(dialog).toBeHidden()
+  await captureToInbox(page, 'Bank form #errands')
 
   await page.getByTestId('inbox-badge').click()
   const inboxSheet = page.getByTestId('inbox-sheet')

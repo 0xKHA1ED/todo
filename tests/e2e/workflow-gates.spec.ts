@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { openQuickCapture, requireE2ECredentials, requireLifePmMigration, seedNodeTree, signIn } from './helpers'
+import { captureToInbox, requireE2ECredentials, requireLifePmMigration, seedNodeTree, signIn } from './helpers'
 
 test.beforeEach(async () => {
   requireE2ECredentials()
@@ -28,10 +28,7 @@ test('cannot add a work item before Execute and can after', async ({ page }) => 
 
 test('inbox promote creates a project at problem with seed text', async ({ page }) => {
   await signIn(page)
-  await openQuickCapture(page)
-  const capture = page.getByRole('dialog', { name: 'Quick capture' })
-  await capture.getByLabel('Title').fill('Silent session drop')
-  await capture.getByRole('button', { name: 'Add to Inbox' }).click()
+  await captureToInbox(page, 'Silent session drop')
 
   await page.getByTestId('inbox-badge').click()
   await page.getByTestId('promote-to-project').click()

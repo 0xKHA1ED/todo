@@ -38,9 +38,27 @@ function htmlText(html: string): string {
   return html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+export function isStageDocEmpty(html: string | undefined): boolean {
+  if (!html) return true
+  const withoutHeadings = html.replace(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/gi, ' ')
+  return htmlText(withoutHeadings).length === 0
+}
+
+export function emptyStageHtml(stage: WorkflowStage): string {
+  return STAGE_SECTIONS[stage].map((heading) => `<h2>${heading}</h2><p></p>`).join('')
+}
+
+export function ensureStageDoc(html: string | undefined, stage: WorkflowStage): string {
+  return isStageDocEmpty(html) ? emptyStageHtml(stage) : (html as string)
+}
+
+export function needsStageTemplate(html: string | undefined): boolean {
+  return !/<h2[\s>]/i.test(html ?? '')
+}
+
 export function stageHasContent(node: NodeRecord, stage: WorkflowStage): boolean {
   if (node.stage_status[stage] === 'complete') return true
-  return htmlText(node.stage_docs[stage] ?? '').length > 0
+  return !isStageDocEmpty(node.stage_docs[stage])
 }
 
 function headingSection(html: string, heading: string): string {
@@ -50,7 +68,8 @@ function headingSection(html: string, heading: string): string {
 }
 
 function countStructuredItems(html: string): number {
-  const listItems = html.match(/<li[\s>]/gi)?.length ?? 0
+  const listItems =
+    html.match(/<li[\s>][\s\S]*?<\/li>/gi)?.filter((item) => htmlText(item).length > 0).length ?? 0
   if (listItems > 0) return listItems
   return html.match(/<p[\s>][\s\S]*?<\/p>/gi)?.filter((paragraph) => htmlText(paragraph).length > 0).length ?? 0
 }

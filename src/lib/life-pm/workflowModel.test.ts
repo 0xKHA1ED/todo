@@ -7,7 +7,10 @@ import {
   canEditStage,
   canSignOff,
   canSkipReview,
+  defaultTitleForKind,
+  filingClickAction,
   hasChildModules,
+  isValidMoveParent,
   isWorkflowLeaf,
   nextStage,
   trafficLight,
@@ -225,6 +228,49 @@ describe('canSignOff', () => {
       kind: 'module',
     })
     expect(canSignOff(parent, [home, parent, child])).toBe(false)
+  })
+})
+
+describe('defaultTitleForKind', () => {
+  it('names new nodes by kind instead of always calling them tasks', () => {
+    expect(defaultTitleForKind('domain')).toBe('New Domain')
+    expect(defaultTitleForKind('project')).toBe('New Project')
+    expect(defaultTitleForKind('module')).toBe('New Module')
+    expect(defaultTitleForKind('task')).toBe('New Task')
+  })
+})
+
+describe('filingClickAction', () => {
+  it('drills into domains and containers, files onto execute leaves, and enters other leaves', () => {
+    const domain = node({ id: 'ims', title: 'IMS', kind: 'domain' })
+    const container = node({ id: 'platform', title: 'Platform', parent_id: 'ims', kind: 'project' })
+    const child = node({ id: 'auth', title: 'Auth', parent_id: 'platform', kind: 'module', workflow_stage: 'problem' })
+    const executeLeaf = node({ id: 'floor', title: 'Flooring', kind: 'project', workflow_stage: 'execute' })
+    const problemLeaf = node({ id: 'idea', title: 'Idea', kind: 'project', workflow_stage: 'problem' })
+    const nodes = [home, domain, container, child, executeLeaf, problemLeaf]
+
+    expect(filingClickAction(nodes, 'ims')).toBe('enter')
+    expect(filingClickAction(nodes, 'platform')).toBe('enter')
+    expect(filingClickAction(nodes, 'floor')).toBe('file')
+    expect(filingClickAction(nodes, 'idea')).toBe('enter')
+    expect(filingClickAction(nodes, 'auth')).toBe('enter')
+  })
+})
+
+describe('isValidMoveParent', () => {
+  it('allows projects under domains or home and rejects tasks as destinations', () => {
+    const domain = node({ id: 'ims', title: 'IMS', kind: 'domain' })
+    const project = node({ id: 'auth', title: 'Auth', parent_id: 'ims', kind: 'project', workflow_stage: 'problem' })
+    const other = node({ id: 'floor', title: 'Flooring', kind: 'project', workflow_stage: 'execute' })
+    const task = node({ id: 't', title: 'Task', parent_id: 'floor', kind: 'task' })
+    const nodes = [home, domain, project, other, task]
+
+    expect(isValidMoveParent(project, domain, nodes)).toBe(true)
+    expect(isValidMoveParent(project, home, nodes)).toBe(true)
+    expect(isValidMoveParent(project, other, nodes)).toBe(false)
+    expect(isValidMoveParent(other, task, nodes)).toBe(false)
+    expect(isValidMoveParent(task, other, nodes)).toBe(true)
+    expect(isValidMoveParent(task, project, nodes)).toBe(false)
   })
 })
 

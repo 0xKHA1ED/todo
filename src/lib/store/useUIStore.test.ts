@@ -62,7 +62,7 @@ describe('useUIStore', () => {
     expect(state.activeLensId).toBe('errands')
   })
 
-  it('entering a different place clears selection, panel, lens, and filing', () => {
+  it('entering a different place clears selection, panel, and lens but keeps filing', () => {
     useUIStore.setState({
       currentPlaceId: 'place-1',
       selectedNodeId: 'node-1',
@@ -76,7 +76,7 @@ describe('useUIStore', () => {
     expect(state.selectedNodeId).toBeNull()
     expect(state.isPanelOpen).toBe(false)
     expect(state.activeLensId).toBeNull()
-    expect(state.filingNodeId).toBeNull()
+    expect(state.filingNodeId).toBe('filing')
   })
 
   it('resetPlace returns to the initial standing state', () => {
@@ -135,12 +135,11 @@ describe('useUIStore', () => {
     vi.unstubAllGlobals()
   })
 
-  it('setActiveLensId and setQuickCaptureOpen both clear filing state', () => {
+  it('setQuickCaptureOpen clears filing state while lenses keep it', () => {
     useUIStore.setState({ filingNodeId: 'filing' })
     useUIStore.getState().setActiveLensId('calls')
-    expect(useUIStore.getState().filingNodeId).toBeNull()
+    expect(useUIStore.getState().filingNodeId).toBe('filing')
 
-    useUIStore.setState({ filingNodeId: 'filing' })
     useUIStore.getState().setQuickCaptureOpen(true)
     expect(useUIStore.getState().filingNodeId).toBeNull()
     expect(useUIStore.getState().isQuickCaptureOpen).toBe(true)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -33,6 +33,12 @@ export function PromoteDialog({ item, open, onOpenChange }: PromoteDialogProps) 
   }, [kind, nodes])
 
   const root = nodes.find((node) => node.parent_id === null)
+
+  useEffect(() => {
+    if (!open) return
+    const valid = parents.some((parent) => parent.id === parentId)
+    if (!valid) setParentId(parents[0]?.id ?? root?.id ?? '')
+  }, [open, parentId, parents, root?.id])
 
   function handleOpenDefaults() {
     setKind('project')
@@ -116,7 +122,7 @@ export function PromoteDialog({ item, open, onOpenChange }: PromoteDialogProps) 
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" data-testid="promote-submit">
+            <Button type="submit" data-testid="promote-submit" disabled={!parentId || parents.length === 0}>
               Promote
             </Button>
           </DialogFooter>

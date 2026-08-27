@@ -13,6 +13,8 @@ interface StageDocumentProps {
 export function StageDocument({ html, editable, onChange }: StageDocumentProps) {
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+  const lastEmittedRef = useRef(html || '<p></p>')
+  const pendingRef = useRef<string | null>(null)
 
   const editor = useEditor({
     extensions: editorExtensions,
@@ -20,7 +22,10 @@ export function StageDocument({ html, editable, onChange }: StageDocumentProps) 
     editable,
     immediatelyRender: false,
     onUpdate: ({ editor: instance }) => {
-      onChangeRef.current(instance.getHTML())
+      const next = instance.getHTML()
+      lastEmittedRef.current = next
+      pendingRef.current = next
+      onChangeRef.current(next)
     },
   })
 
@@ -31,11 +36,16 @@ export function StageDocument({ html, editable, onChange }: StageDocumentProps) 
 
   useEffect(() => {
     if (!editor) return
-    const current = editor.getHTML()
     const next = html || '<p></p>'
-    if (current !== next) {
-      editor.commands.setContent(next, false)
+    if (next === lastEmittedRef.current) return
+    if (editor.isFocused && pendingRef.current !== null) return
+    if (editor.getHTML() === next) {
+      lastEmittedRef.current = next
+      return
     }
+    editor.commands.setContent(next, false)
+    lastEmittedRef.current = next
+    pendingRef.current = null
   }, [editor, html])
 
   return (

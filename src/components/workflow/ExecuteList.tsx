@@ -11,9 +11,10 @@ import type { NodeRecord } from '@/types'
 
 interface ExecuteListProps {
   place: NodeRecord
+  onAddChild: () => void
 }
 
-export function ExecuteList({ place }: ExecuteListProps) {
+export function ExecuteList({ place, onAddChild }: ExecuteListProps) {
   const { toast } = useToast()
   const nodes = useNodeStore((state) => state.nodes)
   const createNode = useNodeStore((state) => state.createNode)
@@ -22,6 +23,7 @@ export function ExecuteList({ place }: ExecuteListProps) {
   const requestTitleFocus = useUIStore((state) => state.requestTitleFocus)
   const tasks = nodes.filter((node) => node.parent_id === place.id && (node.kind === 'task' || node.kind == null))
   const allowed = canCreateTask(place, nodes)
+  const addLabel = place.kind === 'project' ? 'Add module' : 'Add submodule'
 
   async function addTask() {
     if (!allowed) {
@@ -45,15 +47,24 @@ export function ExecuteList({ place }: ExecuteListProps) {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-6 py-6" data-testid="execute-list">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Do</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{place.title}</h1>
+          {place.break_glass?.used && <p className="mt-1 text-xs font-medium text-amber-700">Emergency skip used</p>}
         </div>
-        <Button type="button" data-testid="add-work-item" disabled={!allowed} onClick={() => void addTask()}>
-          <Plus className="mr-2 h-3.5 w-3.5" />
-          Add work item
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" data-testid="place-details" onClick={() => openPanel(place.id)}>
+            Details
+          </Button>
+          <Button type="button" variant="secondary" data-testid="add-module" onClick={onAddChild}>
+            {addLabel}
+          </Button>
+          <Button type="button" data-testid="add-work-item" disabled={!allowed} onClick={() => void addTask()}>
+            <Plus className="mr-2 h-3.5 w-3.5" />
+            Add work item
+          </Button>
+        </div>
       </div>
       {!allowed && (
         <p className="text-sm text-muted-foreground">Tasks unlock in Execute. Finish the earlier stages first.</p>

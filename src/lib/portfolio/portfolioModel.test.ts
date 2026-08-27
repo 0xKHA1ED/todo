@@ -39,6 +39,15 @@ describe('listProjects / groupByDomain', () => {
     expect(groups[0]?.projects.map((item) => item.title)).toEqual(['Auth refactor'])
     expect(groups[1]?.projects.map((item) => item.title)).toEqual(['Flooring'])
   })
+
+  it('keeps empty domains visible so they can be opened and receive a first project', () => {
+    const ims = node({ id: 'ims', title: 'IMS', kind: 'domain' })
+    const health = node({ id: 'health', title: 'Health', kind: 'domain' })
+    const flooring = node({ id: 'floor', title: 'Flooring', kind: 'project', pm_status: 'active' })
+    const groups = groupByDomain([home, ims, health, flooring], [flooring], { includeEmptyDomains: true })
+    expect(groups.map((group) => group.label)).toEqual(['Health', 'IMS', 'Uncategorized'])
+    expect(groups.find((group) => group.label === 'IMS')?.projects).toEqual([])
+  })
 })
 
 describe('portfolioStatusSections', () => {

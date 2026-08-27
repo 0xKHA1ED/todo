@@ -4,11 +4,13 @@ import { create } from 'zustand'
 import { visitTargetIds } from '@/lib/place/placeModel'
 import { ContainerConversionError } from '@/lib/life-pm/errors'
 import { mergeImportedSession } from '@/lib/life-pm/importSession'
+import { emptyStageHtml, needsStageTemplate } from '@/lib/life-pm/stageContent'
 import { newLeafStageStatus } from '@/lib/life-pm/types'
 import {
   canCreateTask,
   canSignOff,
   defaultKindForParent,
+  defaultTitleForKind,
   isWorkflowLeaf,
   nextStage,
   validateChildKind,
@@ -70,19 +72,13 @@ async function ensureSystemNodes(userId: string, existingNodes: NodeRecord[]) {
   return nodes
 }
 
-function defaultTitleForKind(kind: NodeKind): string {
-  if (kind === 'domain') return 'New Domain'
-  if (kind === 'project') return 'New Project'
-  if (kind === 'module') return 'New Module'
-  return 'New Task'
-}
-
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 function pmInsertForKind(kind: NodeKind, payload: CreateNodePayload) {
   const isWorkflowKind = kind === 'project' || kind === 'module'
+  const seededDocs = isWorkflowKind ? { problem: emptyStageHtml('problem') } : {}
   return {
     kind,
     pm_status: payload.pm_status ?? 'active',
@@ -91,7 +87,7 @@ function pmInsertForKind(kind: NodeKind, payload: CreateNodePayload) {
     health: payload.health ?? null,
     workflow_stage: payload.workflow_stage ?? (isWorkflowKind ? 'problem' : null),
     stage_status: payload.stage_status ?? (isWorkflowKind ? newLeafStageStatus() : {}),
-    stage_docs: payload.stage_docs ?? {},
+    stage_docs: payload.stage_docs ?? seededDocs,
     stage_summaries: payload.stage_summaries ?? {},
     decisions: payload.decisions ?? [],
     open_questions: payload.open_questions ?? [],
@@ -246,9 +242,14 @@ export const useNodeStore = create<NodeStore>((set, get) => ({
       [current]: 'complete' as const,
       ...(next ? { [next]: 'in_progress' as const } : {}),
     }
+    const stage_docs =
+      next && needsStageTemplate(node.stage_docs[next])
+        ? { ...node.stage_docs, [next]: emptyStageHtml(next) }
+        : node.stage_docs
     await get().updateNode(nodeId, {
       workflow_stage: next ?? current,
       stage_status,
+      stage_docs,
       ...(next === null && node.kind === 'project' ? { pm_status: 'done' as const } : {}),
     })
   },

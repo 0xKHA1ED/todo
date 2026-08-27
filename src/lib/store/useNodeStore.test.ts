@@ -70,6 +70,14 @@ describe('useNodeStore.createNode', () => {
     expect(useNodeStore.getState().nodes.some((node) => node.id === created.id)).toBe(true)
   })
 
+  it('seeds a problem-stage template so think mode is not a blank page', async () => {
+    setNodes([record({ id: 'home', title: 'Main', parent_id: null })])
+    const created = await useNodeStore.getState().createNode({ parent_id: 'home', kind: 'project' })
+    expect(created.title).toBe('New Project')
+    expect(created.stage_docs.problem).toContain('<h2>Problem statement</h2>')
+    expect(created.stage_docs.problem).toContain('<h2>Not solving</h2>')
+  })
+
   it('rejects creating a task when the parent is still in problem', async () => {
     setNodes([
       record({ id: 'home', title: 'Main', parent_id: null }),

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { MindmapCanvas } from '@/components/canvas/MindmapCanvas'
 import { CanvasToolbar } from '@/components/canvas/CanvasToolbar'
 import { QuickCaptureDialog } from '@/components/capture/QuickCaptureDialog'
@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/dialog'
 import { useKeyboardNav } from '@/hooks/useKeyboardNav'
 import { isContainerConversionError } from '@/lib/life-pm/errors'
-import { isWorkflowLeaf } from '@/lib/life-pm/workflowModel'
+import { canCreateTask, isWorkflowLeaf } from '@/lib/life-pm/workflowModel'
 import { getInboxId } from '@/lib/inbox/inboxModel'
 import { getLensById, rankLensItems } from '@/lib/place/contextLenses'
 import { rankNow } from '@/lib/place/placeModel'
@@ -40,6 +40,7 @@ export function PlaceScreen() {
   const { toast } = useToast()
   const [moveDialogNodeId, setMoveDialogNodeId] = useState<string | null>(null)
   const [containerConfirm, setContainerConfirm] = useState<{ kind: NodeKind } | null>(null)
+  const previousStageRef = useRef<WorkflowStage | null | undefined>(undefined)
   const nodes = useNodeStore((state) => state.nodes)
   const loading = useNodeStore((state) => state.loading)
   const error = useNodeStore((state) => state.error)
@@ -98,6 +99,14 @@ export function PlaceScreen() {
   const inboxId = getInboxId(nodes)
   const leaf = place ? isWorkflowLeaf(place, nodes) : false
 
+  useEffect(() => {
+    const current = place?.workflow_stage
+    if (place && previousStageRef.current !== current && current === 'execute') {
+      setViewMode('list')
+    }
+    previousStageRef.current = current
+  }, [place?.id, place?.workflow_stage, setViewMode])
+
   const lens = atRoot && activeLensId ? getLensById(activeLensId) ?? null : null
   const lensItems = root && lens ? rankLensItems(nodes, root.id, lens.id, new Date()) : { items: [], overflow: 0 }
   const nowRanked = currentPlaceId && leaf && place?.workflow_stage === 'execute'
@@ -147,16 +156,34 @@ export function PlaceScreen() {
     openPanel(item.id)
   }
 
-  const addKindAtRoot: NodeKind = 'project'
-
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-[linear-gradient(135deg,rgba(239,244,247,1),rgba(228,236,244,0.96)_48%,rgba(220,231,239,1))]">
       <PlaceHeader />
       {filingNode && (
         <div className="flex items-center gap-3 border-b border-sky-200/80 bg-sky-50/90 px-4 py-2">
           <p className="min-w-0 flex-1 text-sm text-slate-800">
-            Filing &ldquo;{filingNode.title}&rdquo; — click a project or module in Execute, or search.
+            Filing &ldquo;{filingNode.title}&rdquo; — open a project or module, then file here when it is in Execute.
           </p>
+          {place && canCreateTask(place, nodes) && (
+            <Button
+              size="sm"
+              data-testid="file-here"
+              onClick={() => {
+                void useNodeStore
+                  .getState()
+                  .reparentNode(filingNode.id, place.id)
+                  .then(() => cancelFilingNode())
+                  .catch((error) => {
+                    toast({
+                      title: 'Tasks unlock in Execute',
+                      description: error instanceof Error ? error.message : 'Could not file this task here.',
+                    })
+                  })
+              }}
+            >
+              File here
+            </Button>
+          )}
           <Button
             size="sm"
             variant="secondary"
@@ -223,9 +250,11 @@ export function PlaceScreen() {
                     if (!root) return
                     void createNode({ parent_id: root.id, kind: 'domain' }).then((node) => requestTitleFocus(node.id))
                   }}
-                  onCreateProject={() => {
+                  onCreateProject={(parentId) => {
                     if (!root) return
-                    void createNode({ parent_id: root.id, kind: addKindAtRoot }).then((node) => requestTitleFocus(node.id))
+                    void createNode({ parent_id: parentId ?? root.id, kind: 'project' }).then((node) =>
+                      requestTitleFocus(node.id),
+                    )
                   }}
                 />
               )}
@@ -237,8 +266,18 @@ export function PlaceScreen() {
                   }
                 />
               )}
-              {viewMode === 'think' && place && <ModuleDashboard place={place} />}
-              {viewMode === 'list' && place && <ExecuteList place={place} />}
+              {viewMode === 'think' && place && (
+                <ModuleDashboard
+                  place={place}
+                  onAddChild={() => void createChild(place.kind === 'domain' ? 'project' : 'module')}
+                />
+              )}
+              {viewMode === 'list' && place && (
+                <ExecuteList
+                  place={place}
+                  onAddChild={() => void createChild(place.kind === 'domain' ? 'project' : 'module')}
+                />
+              )}
               {viewMode === 'map' && (
                 <>
                   <MindmapCanvas />
@@ -279,7 +318,7 @@ export function PlaceScreen() {
                 if (kind) void createChild(kind, true)
               }}
             >
-              Add submodule
+              Add {containerConfirm?.kind === 'project' ? 'project' : place?.kind === 'project' ? 'module' : 'submodule'}
             </Button>
           </DialogFooter>
         </DialogContent>

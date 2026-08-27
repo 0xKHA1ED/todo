@@ -9,11 +9,14 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
+import { activatePlace } from '@/lib/life-pm/activatePlace'
 import { useNodeStore } from '@/lib/store/useNodeStore'
 import { useUIStore } from '@/lib/store/useUIStore'
 import { useCommandSearch } from '@/hooks/useCommandSearch'
+import { useToast } from '@/components/ui/use-toast'
 
 export function CommandPalette() {
+  const { toast } = useToast()
   const [query, setQuery] = useState('')
   const results = useCommandSearch(query)
   const nodes = useNodeStore((state) => state.nodes)
@@ -21,23 +24,36 @@ export function CommandPalette() {
   const toggleCommandPalette = useUIStore((state) => state.toggleCommandPalette)
   const openPanel = useUIStore((state) => state.openPanel)
   const enterPlace = useUIStore((state) => state.enterPlace)
-  const selectNode = useUIStore((state) => state.selectNode)
+  const setInboxOpen = useUIStore((state) => state.setInboxOpen)
+  const filingNodeId = useUIStore((state) => state.filingNodeId)
 
-  function handleSelect(nodeId: string) {
+  async function handleSelect(nodeId: string) {
     const hit = nodes.find((node) => node.id === nodeId)
-    const isArea = hit ? hit.system_role === 'inbox' || nodes.some((node) => node.parent_id === hit.id) : false
     toggleCommandPalette(false)
     setQuery('')
     if (!hit) return
+
+    if (filingNodeId) {
+      const result = await activatePlace(hit.id)
+      if (result.blocked) {
+        toast({ title: result.blocked.title, description: result.blocked.description })
+      }
+      return
+    }
+
+    if (hit.system_role === 'inbox') {
+      setInboxOpen(true)
+      return
+    }
+
+    if (hit.kind === 'domain' || hit.kind === 'project' || hit.kind === 'module' || hit.parent_id === null) {
+      enterPlace(hit.id)
+      return
+    }
+
     if (hit.parent_id) {
       enterPlace(hit.parent_id)
-      if (isArea) {
-        selectNode(hit.id)
-      } else {
-        window.requestAnimationFrame(() => openPanel(hit.id))
-      }
-    } else {
-      enterPlace(hit.id)
+      window.requestAnimationFrame(() => openPanel(hit.id))
     }
   }
 
@@ -53,7 +69,7 @@ export function CommandPalette() {
         <CommandEmpty>No matching nodes.</CommandEmpty>
         <CommandGroup heading="Nodes">
           {results.map((node) => (
-            <CommandItem key={node.id} value={`${node.title} ${node.descriptionPreview} ${node.tags.join(' ')}`} onSelect={() => handleSelect(node.id)}>
+            <CommandItem key={node.id} value={`${node.title} ${node.descriptionPreview} ${node.tags.join(' ')}`} onSelect={() => void handleSelect(node.id)}>
               <div className="min-w-0">
                 <p className="truncate font-medium">{node.title}</p>
                 {node.descriptionPreview && (

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
+import { isValidMoveParent } from '@/lib/life-pm/workflowModel'
 import { useNodeStore } from '@/lib/store/useNodeStore'
 import type { NodeRecord } from '@/types'
 
@@ -18,7 +19,7 @@ function buildMoveTargets(nodes: NodeRecord[], node: NodeRecord, subtreeIds: Set
   const nodesById = new Map(nodes.map((candidate) => [candidate.id, candidate]))
 
   return nodes
-    .filter((candidate) => !subtreeIds.has(candidate.id))
+    .filter((candidate) => !subtreeIds.has(candidate.id) && isValidMoveParent(node, candidate, nodes))
     .map<MoveTarget>((candidate) => {
       const path: string[] = []
       let current = candidate

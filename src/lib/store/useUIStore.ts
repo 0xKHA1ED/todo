@@ -77,13 +77,12 @@ export const useUIStore = create<UIStore>((set, get) => ({
   toggleCommandPalette: (open) =>
     set((state) => ({
       isCommandPaletteOpen: typeof open === 'boolean' ? open : !state.isCommandPaletteOpen,
-      filingNodeId: null,
     })),
   setQuickCaptureOpen: (open) => set({ isQuickCaptureOpen: open, filingNodeId: null }),
   setInboxOpen: (open) => set({ isInboxOpen: open }),
   startFilingNode: (id) => set({ filingNodeId: id, isPanelOpen: false, isInboxOpen: false }),
   cancelFilingNode: () => set({ filingNodeId: null }),
-  setActiveLensId: (activeLensId) => set({ activeLensId, filingNodeId: null }),
+  setActiveLensId: (activeLensId) => set({ activeLensId }),
   enterPlace: (id) => {
     const nodes = useNodeStore.getState().nodes
     const node = nodes.find((candidate) => candidate.id === id) ?? null
@@ -97,7 +96,6 @@ export const useUIStore = create<UIStore>((set, get) => ({
       selectedNodeId: same ? state.selectedNodeId : null,
       isPanelOpen: same ? state.isPanelOpen : false,
       activeLensId: same ? state.activeLensId : null,
-      filingNodeId: null,
     })
   },
   setViewMode: (viewMode) => {

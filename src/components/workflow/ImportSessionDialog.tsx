@@ -37,6 +37,7 @@ export function ImportSessionDialog({ nodeId, open, onOpenChange }: ImportSessio
       })
       setRaw('')
       setErrors([])
+      setSubmitting(false)
       onOpenChange(false)
     } catch (error) {
       setErrors([error instanceof Error ? error.message : 'Import failed'])

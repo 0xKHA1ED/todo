@@ -243,10 +243,34 @@ export async function openMapTab(page: Page) {
 }
 
 export async function addProject(page: Page, title: string) {
-  await page.getByRole('button', { name: 'Add project' }).click()
+  await page.getByTestId('add-project').click()
   await expect(page.getByLabel('Title')).toBeFocused()
   await page.getByLabel('Title').fill(title)
   await page.getByLabel('Title').blur()
+}
+
+export async function nameNewNode(page: Page, title: string) {
+  const titleInput = page.getByLabel('Title')
+  await expect(titleInput).toBeFocused()
+  await titleInput.fill(title)
+  await titleInput.press('Enter')
+  await closePanel(page)
+}
+
+export async function addDomain(page: Page, title: string) {
+  await page.getByTestId('add-domain').click()
+  await nameNewNode(page, title)
+  await expect(page.getByTestId('domain-header').filter({ hasText: title })).toBeVisible()
+}
+
+export async function typeUnderHeading(page: Page, heading: string, text: string) {
+  const editor = page.getByTestId('stage-document').locator('.tiptap')
+  const headingNode = editor.locator('h2', { hasText: heading })
+  await expect(headingNode).toBeVisible()
+  await headingNode.click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.type(text, { delay: 10 })
 }
 
 export async function selectFirstNode(page: Page) {

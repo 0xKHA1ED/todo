@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
+import { PlaceActions } from '@/components/place/PlaceActions'
 import { ProjectCard } from '@/components/portfolio/ProjectCard'
 import { Button } from '@/components/ui/button'
 import { ForgottenCard } from '@/components/place/ForgottenCard'
 import { LensPicker } from '@/components/place/LensPicker'
+import { activatePlace } from '@/lib/life-pm/activatePlace'
 import { pickForgotten } from '@/lib/place/placeModel'
 import { groupByDomain, pickAttentionModule, portfolioStatusSections, projectStageIndicator } from '@/lib/portfolio/portfolioModel'
 import { useNodeStore } from '@/lib/store/useNodeStore'
@@ -30,18 +32,15 @@ function forgottenPathLabel(nodes: NodeRecord[], forgottenId: string, rootId: st
 
 interface PortfolioDashboardProps {
   onCreateDomain: () => void
-  onCreateProject: () => void
+  onCreateProject: (parentId?: string) => void
 }
 
 export function PortfolioDashboard({ onCreateDomain, onCreateProject }: PortfolioDashboardProps) {
   const { toast } = useToast()
   const nodes = useNodeStore((state) => state.nodes)
-  const reparentNode = useNodeStore((state) => state.reparentNode)
   const enterPlace = useUIStore((state) => state.enterPlace)
   const openPanel = useUIStore((state) => state.openPanel)
   const markVisited = useNodeStore((state) => state.markVisited)
-  const filingNodeId = useUIStore((state) => state.filingNodeId)
-  const cancelFilingNode = useUIStore((state) => state.cancelFilingNode)
   const activeLensId = useUIStore((state) => state.activeLensId)
   const setActiveLensId = useUIStore((state) => state.setActiveLensId)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
@@ -60,25 +59,14 @@ export function PortfolioDashboard({ onCreateDomain, onCreateProject }: Portfoli
     : null
 
   async function openProject(projectId: string) {
-    if (filingNodeId) {
-      try {
-        await reparentNode(filingNodeId, projectId)
-        cancelFilingNode()
-      } catch (error) {
-        toast({
-          title: 'Tasks unlock in Execute',
-          description:
-            error instanceof Error
-              ? error.message
-              : 'Choose a leaf project or module in Execute, or use emergency skip from its workflow screen.',
-        })
-      }
-      return
+    const result = await activatePlace(projectId)
+    if (result.blocked) {
+      toast({ title: result.blocked.title, description: result.blocked.description })
     }
-    enterPlace(projectId)
   }
 
   const hasProjects = sections.some((section) => section.projects.length > 0)
+  const hasDomains = nodes.some((node) => node.kind === 'domain')
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-8" data-testid="portfolio-dashboard">
@@ -88,11 +76,11 @@ export function PortfolioDashboard({ onCreateDomain, onCreateProject }: Portfoli
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-900">Life PM</h1>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" onClick={onCreateDomain}>
+          <Button type="button" variant="secondary" data-testid="add-domain" onClick={onCreateDomain}>
             <Plus className="mr-2 h-3.5 w-3.5" />
             Add domain
           </Button>
-          <Button type="button" onClick={onCreateProject}>
+          <Button type="button" data-testid="add-project" onClick={() => onCreateProject()}>
             <Plus className="mr-2 h-3.5 w-3.5" />
             Add project
           </Button>
@@ -108,7 +96,7 @@ export function PortfolioDashboard({ onCreateDomain, onCreateProject }: Portfoli
         onOpen={() => {
           if (!forgotten) return
           markVisited(forgotten.id).catch(() => undefined)
-          if (forgotten.kind === 'project' || !forgotten.parent_id) {
+          if (forgotten.kind === 'project' || forgotten.kind === 'domain' || !forgotten.parent_id) {
             enterPlace(forgotten.id)
             return
           }
@@ -117,16 +105,16 @@ export function PortfolioDashboard({ onCreateDomain, onCreateProject }: Portfoli
         }}
       />
 
-      {!hasProjects && (
+      {!hasProjects && !hasDomains && (
         <div className="rounded-[1.7rem] border border-white/75 bg-white/86 px-6 py-10 text-center shadow-[0_28px_90px_-50px_rgba(15,23,42,0.8)]">
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500">Add a domain or project</p>
         </div>
       )}
 
       {sections.map((section) => {
-        if (section.projects.length === 0) return null
+        const groups = groupByDomain(nodes, section.projects, { includeEmptyDomains: section.id === 'active' })
+        if (groups.length === 0) return null
         const open = expanded[section.id] ?? !section.collapsed
-        const groups = groupByDomain(nodes, section.projects)
         return (
           <section key={section.id} className="space-y-4">
             <button
@@ -135,36 +123,70 @@ export function PortfolioDashboard({ onCreateDomain, onCreateProject }: Portfoli
               onClick={() => setExpanded((current) => ({ ...current, [section.id]: !open }))}
             >
               {section.label}
-              <span className="text-slate-400">{section.projects.length}</span>
+              <span className="text-slate-400">{Math.max(section.projects.length, groups.length)}</span>
             </button>
             {open &&
               groups.map((group) => (
-                <div key={group.label} className="space-y-3">
-                  <h2 className="text-sm font-medium text-slate-600">{group.label}</h2>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {group.projects.map((project) => {
-                      const attention = pickAttentionModule(nodes, project.id, now)
-                      const stageIndicator = projectStageIndicator(nodes, project.id)
-                      return (
-                        <ProjectCard
-                          key={project.id}
-                          title={project.title}
-                          status={project.pm_status}
-                          health={project.health}
-                          outcome={project.outcome}
-                          stageLabel={stageIndicator?.stage ?? null}
-                          stageLight={stageIndicator?.light ?? null}
-                          attentionTitle={attention?.title ?? null}
-                          breakGlass={Boolean(
-                            project.break_glass?.used ||
-                              nodes.some((node) => node.break_glass?.used && node.parent_id === project.id) ||
-                              attention?.break_glass?.used,
-                          )}
-                          onClick={() => void openProject(project.id)}
-                        />
-                      )
-                    })}
+                <div key={group.domain?.id ?? 'uncategorized'} className="space-y-3" data-testid={group.domain ? 'domain-group' : 'uncategorized-group'}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {group.domain ? (
+                      <>
+                        <button
+                          type="button"
+                          data-testid="domain-header"
+                          className="text-sm font-medium text-slate-700 underline-offset-2 hover:underline"
+                          onClick={() => void openProject(group.domain!.id)}
+                        >
+                          {group.label}
+                        </button>
+                        <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">domain</span>
+                        <PlaceActions nodeId={group.domain.id} title={group.domain.title} />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          data-testid="add-domain-project"
+                          onClick={() => onCreateProject(group.domain!.id)}
+                        >
+                          <Plus className="mr-1 h-3.5 w-3.5" />
+                          Add project
+                        </Button>
+                      </>
+                    ) : (
+                      <h2 className="text-sm font-medium text-slate-600">{group.label}</h2>
+                    )}
                   </div>
+                  {group.projects.length === 0 ? (
+                    <p className="rounded-2xl border border-dashed border-slate-200 bg-white/60 px-4 py-6 text-sm text-muted-foreground">
+                      No projects yet. Add one to start thinking.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      {group.projects.map((project) => {
+                        const attention = pickAttentionModule(nodes, project.id, now)
+                        const stageIndicator = projectStageIndicator(nodes, project.id)
+                        return (
+                          <ProjectCard
+                            key={project.id}
+                            id={project.id}
+                            title={project.title}
+                            status={project.pm_status}
+                            health={project.health}
+                            outcome={project.outcome}
+                            stageLabel={stageIndicator?.stage ?? null}
+                            stageLight={stageIndicator?.light ?? null}
+                            attentionTitle={attention?.title ?? null}
+                            breakGlass={Boolean(
+                              project.break_glass?.used ||
+                                nodes.some((node) => node.break_glass?.used && node.parent_id === project.id) ||
+                                attention?.break_glass?.used,
+                            )}
+                            onClick={() => void openProject(project.id)}
+                          />
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               ))}
           </section>

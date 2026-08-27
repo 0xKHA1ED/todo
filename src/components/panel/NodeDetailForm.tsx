@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/components/ui/use-toast'
 import { parseChecklistProgress, type ChecklistProgress } from '@/lib/editor/checklistProgress'
+import { defaultTitleForKind } from '@/lib/life-pm/workflowModel'
 import { useNodeStore } from '@/lib/store/useNodeStore'
 import { useUIStore } from '@/lib/store/useUIStore'
 import { cn, parseTags } from '@/lib/utils'
@@ -38,7 +39,6 @@ export function NodeDetailForm({ node }: NodeDetailFormProps) {
   const nodes = useNodeStore((state) => state.nodes)
   const updateNode = useNodeStore((state) => state.updateNode)
   const deleteNode = useNodeStore((state) => state.deleteNode)
-  const reparentNode = useNodeStore((state) => state.reparentNode)
   const closePanel = useUIStore((state) => state.closePanel)
   const titleFocusRequest = useUIStore((state) => state.titleFocusRequest)
   const clearTitleFocusRequest = useUIStore((state) => state.clearTitleFocusRequest)
@@ -70,7 +70,7 @@ export function NodeDetailForm({ node }: NodeDetailFormProps) {
   }, [clearTitleFocusRequest, node.id, titleFocusRequest])
 
   async function saveTitle() {
-    const trimmed = title.trim() || 'New Task'
+    const trimmed = title.trim() || defaultTitleForKind(node.kind)
     setTitle(trimmed)
     if (trimmed === node.title) return
     try {
@@ -188,7 +188,7 @@ export function NodeDetailForm({ node }: NodeDetailFormProps) {
                     size="sm"
                     variant={node.domain_tag === tag ? 'default' : 'secondary'}
                     className="capitalize"
-                    onClick={() => patchNode({ domain_tag: tag })}
+                    onClick={() => patchNode({ domain_tag: node.domain_tag === tag ? null : tag })}
                   >
                     {tag}
                   </Button>
@@ -207,7 +207,7 @@ export function NodeDetailForm({ node }: NodeDetailFormProps) {
                     size="sm"
                     variant={node.health === health ? 'default' : 'secondary'}
                     className="capitalize"
-                    onClick={() => patchNode({ health })}
+                    onClick={() => patchNode({ health: node.health === health ? null : health })}
                   >
                     {health.replace('_', ' ')}
                   </Button>
@@ -243,34 +243,36 @@ export function NodeDetailForm({ node }: NodeDetailFormProps) {
         </div>
       )}
 
-      <div className="space-y-2">
-        <Label>Status</Label>
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge
-            variant={node.completed ? 'default' : 'outline'}
-            className={cn(node.completed && 'border-emerald-500/20 bg-emerald-500/15 text-emerald-700')}
-          >
-            {node.completed ? 'Completed' : 'Open'}
-          </Badge>
-          <Button
-            type="button"
-            variant={node.completed ? 'outline' : 'default'}
-            onClick={() => patchNode({ completed: !node.completed })}
-          >
-            {node.completed ? (
-              <>
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Mark Uncompleted
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                Mark Completed
-              </>
-            )}
-          </Button>
+      {(isTask || checklistProgress.total > 0) && (
+        <div className="space-y-2">
+          <Label>Completion</Label>
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge
+              variant={node.completed ? 'default' : 'outline'}
+              className={cn(node.completed && 'border-emerald-500/20 bg-emerald-500/15 text-emerald-700')}
+            >
+              {node.completed ? 'Completed' : 'Open'}
+            </Badge>
+            <Button
+              type="button"
+              variant={node.completed ? 'outline' : 'default'}
+              onClick={() => patchNode({ completed: !node.completed })}
+            >
+              {node.completed ? (
+                <>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Mark Uncompleted
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Mark Completed
+                </>
+              )}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">

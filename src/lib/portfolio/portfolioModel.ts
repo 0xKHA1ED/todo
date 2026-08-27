@@ -88,7 +88,15 @@ export type DomainGroup = {
   projects: NodeRecord[]
 }
 
-export function groupByDomain(nodes: NodeRecord[], projects: NodeRecord[]): DomainGroup[] {
+export function listDomains(nodes: NodeRecord[]): NodeRecord[] {
+  return nodes.filter((node) => node.kind === 'domain' && node.system_role == null).sort(byTitle)
+}
+
+export function groupByDomain(
+  nodes: NodeRecord[],
+  projects: NodeRecord[],
+  options?: { includeEmptyDomains?: boolean },
+): DomainGroup[] {
   const byId = new Map(nodes.map((node) => [node.id, node]))
   const groups = new Map<string, DomainGroup>()
 
@@ -108,10 +116,24 @@ export function groupByDomain(nodes: NodeRecord[], projects: NodeRecord[]): Doma
     }
   }
 
-  return Array.from(groups.values()).map((group) => ({
-    ...group,
-    projects: [...group.projects].sort(byTitle),
-  }))
+  if (options?.includeEmptyDomains) {
+    for (const domain of listDomains(nodes)) {
+      if (!groups.has(domain.id)) {
+        groups.set(domain.id, { domain, label: domain.title, projects: [] })
+      }
+    }
+  }
+
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      projects: [...group.projects].sort(byTitle),
+    }))
+    .sort((a, b) => {
+      if (a.domain === null && b.domain !== null) return 1
+      if (a.domain !== null && b.domain === null) return -1
+      return a.label.localeCompare(b.label)
+    })
 }
 
 export type StatusSectionId = 'active' | 'paused' | 'idea' | 'done'

@@ -17,9 +17,10 @@ const LABEL: Record<WorkflowStage, string> = {
 
 interface SignOffButtonProps {
   node: NodeRecord
+  onBeforeSignOff?: () => Promise<void> | void
 }
 
-export function SignOffButton({ node }: SignOffButtonProps) {
+export function SignOffButton({ node, onBeforeSignOff }: SignOffButtonProps) {
   const { toast } = useToast()
   const nodes = useNodeStore((state) => state.nodes)
   const signOffStage = useNodeStore((state) => state.signOffStage)
@@ -32,6 +33,7 @@ export function SignOffButton({ node }: SignOffButtonProps) {
 
   async function handleSignOff() {
     try {
+      await onBeforeSignOff?.()
       await signOffStage(node.id)
     } catch (error) {
       toast({
@@ -44,6 +46,7 @@ export function SignOffButton({ node }: SignOffButtonProps) {
 
   async function handleSkip() {
     try {
+      await onBeforeSignOff?.()
       await skipReview(node.id)
     } catch (error) {
       toast({

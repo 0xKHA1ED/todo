@@ -116,6 +116,34 @@ export function defaultKindForParent(parent: NodeRecord, nodes: NodeRecord[]): N
   return allowed[0] ?? 'task'
 }
 
+export function defaultTitleForKind(kind: NodeKind | null | undefined): string {
+  if (kind === 'domain') return 'New Domain'
+  if (kind === 'project') return 'New Project'
+  if (kind === 'module') return 'New Module'
+  return 'New Task'
+}
+
+export function filingClickAction(
+  nodes: NodeRecord[],
+  targetId: string,
+): 'file' | 'enter' | 'reject' {
+  const target = nodes.find((candidate) => candidate.id === targetId)
+  if (!target || target.system_role === 'inbox') return 'reject'
+  if (target.kind === 'domain' || isContainer(target, nodes)) return 'enter'
+  if (canCreateTask(target, nodes)) return 'file'
+  if (target.kind === 'project' || target.kind === 'module') return 'enter'
+  return 'reject'
+}
+
+export function isValidMoveParent(node: NodeRecord, destination: NodeRecord, nodes: NodeRecord[]): boolean {
+  if (destination.id === node.id) return false
+  if (node.parent_id === null || node.system_role === 'inbox') return false
+  if (destination.kind === 'task') return false
+  const kind = node.kind ?? 'task'
+  if (destination.system_role === 'inbox') return kind === 'task'
+  return validateChildKind(destination, kind, nodes) === null
+}
+
 export function resolveViewMode(node: NodeRecord | null, nodes: NodeRecord[]): import('./types').ViewMode {
   if (!node || node.parent_id === null) return 'portfolio'
   if (node.system_role === 'inbox') return 'list'

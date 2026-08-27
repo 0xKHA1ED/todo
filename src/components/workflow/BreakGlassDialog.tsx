@@ -26,6 +26,7 @@ export function BreakGlassDialog({ nodeId, open, onOpenChange }: BreakGlassDialo
       await breakGlassToExecute(nodeId, reason)
       toast({ title: 'Skipped to Execute' })
       setReason('')
+      setSubmitting(false)
       onOpenChange(false)
     } catch (error) {
       toast({

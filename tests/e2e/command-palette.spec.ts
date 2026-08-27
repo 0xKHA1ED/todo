@@ -12,5 +12,5 @@ test('ctrl+k searches nodes and opens the selected result', async ({ page }) => 
   await page.getByPlaceholder('Search titles and descriptions...').fill(title)
   await expect(page.getByRole('option', { name: new RegExp(title) })).toBeVisible()
   await page.keyboard.press('Enter')
-  await expect(page.getByLabel('Title')).toHaveValue(title)
+  await expect(page.getByTestId('place-title')).toHaveText(title)
 })
